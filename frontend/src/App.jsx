@@ -1,46 +1,23 @@
-import React, { useState } from "react";
-import Register from "./components/Register";
-import WebcamFace from "./components/WebcamFace";
+// App.jsx
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
 
-export default function App() {
-  const [view, setView] = useState("home");
-
+function App() {
   return (
-    <div style={{ padding: 20, fontFamily: "sans-serif" }}>
-      <h2>Face Recognition Attendance System</h2>
+    <Router>
+      <nav style={{ marginBottom: 20 }}>
+        <Link to="/" style={{ marginRight: 10 }}>Register</Link>
+        <Link to="/dashboard">Dashboard</Link>
+      </nav>
 
-      {/* Navigation Buttons */}
-      <div style={{ marginBottom: 16 }}>
-        <button
-          onClick={() => setView("home")}
-          style={{ marginRight: 8, padding: "6px 12px" }}
-        >
-          Home
-        </button>
-        <button
-          onClick={() => setView("register")}
-          style={{ marginRight: 8, padding: "6px 12px" }}
-        >
-          Register Student
-        </button>
-        <button
-          onClick={() => setView("attendance")}
-          style={{ padding: "6px 12px" }}
-        >
-          Attendance
-        </button>
-      </div>
-
-      {/* Views */}
-      {view === "home" && (
-        <div>
-          <p>Welcome 👋</p>
-          <p>Select <b>Register</b> to add a student, or <b>Attendance</b> to mark attendance.</p>
-        </div>
-      )}
-
-      {view === "register" && <Register />}
-      {view === "attendance" && <WebcamFace />}
-    </div>
+      <Routes>
+        <Route path="/" element={<Register />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </Router>
   );
 }
+
+export default App;

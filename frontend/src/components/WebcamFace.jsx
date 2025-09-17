@@ -6,32 +6,40 @@ import { Camera } from "@mediapipe/camera_utils";
 export default function WebcamFace() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const [status, setStatus] = useState("loading models...");
+  const [status, setStatus] = useState("Loading models...");
   const lastCheckRef = useRef(0);
   const checkIntervalSeconds = 5;
   const handStateRef = useRef(false);
   const handsRef = useRef(null);
   const cameraRef = useRef(null);
 
-useEffect(() => {
-  (async function loadModelsAndStart() {
-    const MODEL_URL = "/models";
-    try {
-      setStatus("Loading face-api models...");
-      await Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-      ]);
-      setStatus("✅ Models loaded. Starting webcam...");
-      startCamera();   // ✅ use startCamera here
-    } catch (err) {
-      console.error("Model load error:", err);
-      setStatus("⚠️ Failed to load models: " + err.message);
-    }
-  })();
-}, []);
+  // Load models and start
+  useEffect(() => {
+    (async function init() {
+      const MODEL_URL = "/models";
+      try {
+        setStatus("⏳ Loading face-api models...");
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        ]);
 
+        setStatus("✅ Models loaded. Initializing hand tracking...");
+        initHands();
+        startCamera();
+      } catch (err) {
+        console.error("Model load error:", err);
+        setStatus("⚠️ Failed to load models: " + err.message);
+      }
+    })();
+
+    return () => {
+      if (cameraRef.current) {
+        cameraRef.current.stop();
+      }
+    };
+  }, []);
 
   function initHands() {
     const hands = new Hands({
@@ -52,14 +60,16 @@ useEffect(() => {
     if (!videoRef.current) return;
     cameraRef.current = new Camera(videoRef.current, {
       onFrame: async () => {
-        await handsRef.current.send({ image: videoRef.current });
+        if (handsRef.current) {
+          await handsRef.current.send({ image: videoRef.current });
+        }
         drawFrame();
       },
       width: 640,
       height: 480,
     });
     cameraRef.current.start();
-    setStatus("✅ webcam started");
+    setStatus("✅ Webcam started — raise hand to check face");
   }
 
   function onHandsResults(results) {
@@ -67,7 +77,7 @@ useEffect(() => {
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
       for (const landmarks of results.multiHandLandmarks) {
         const wrist = landmarks[0];
-        const tip = landmarks[12];
+        const tip = landmarks[12]; // middle finger tip
         if (tip.y < wrist.y) {
           raised = true;
           break;
@@ -79,57 +89,83 @@ useEffect(() => {
 
   async function drawFrame() {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas?.getContext("2d");
+    const video = videoRef.current;
 
-    if (!videoRef.current || !videoRef.current.videoWidth) return;
+    if (!video || !video.videoWidth || !ctx) return;
 
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     if (handStateRef.current) {
       const now = Date.now() / 1000;
       if (now - lastCheckRef.current > checkIntervalSeconds) {
         lastCheckRef.current = now;
-        setStatus("✋ hand raised → checking face...");
-        await doFaceCheck();
+        setStatus("✋ Hand raised → checking face...");
+        await doFaceCheck(ctx);
       } else {
-        setStatus("✋ hand raised (cooldown)");
+        setStatus("✋ Hand raised (cooldown)");
       }
     } else {
-      setStatus("no hand raised");
+      setStatus("No hand raised");
     }
   }
 
-  async function doFaceCheck() {
+  async function doFaceCheck(ctx) {
     try {
-      const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 });
+      const options = new faceapi.TinyFaceDetectorOptions({
+        inputSize: 224,
+        scoreThreshold: 0.5,
+      });
+
       const result = await faceapi
         .detectSingleFace(videoRef.current, options)
         .withFaceLandmarks()
         .withFaceDescriptor();
 
       if (!result) {
-        setStatus("❌ no face found");
+        setStatus("❌ No face found");
         return;
       }
-      setStatus("✅ face found — sending embedding...");
 
+      // Draw rectangle + landmarks
+      const dims = {
+        width: videoRef.current.videoWidth,
+        height: videoRef.current.videoHeight,
+      };
+      const resized = faceapi.resizeResults(result, dims);
+
+      faceapi.draw.drawDetections(canvasRef.current, resized);
+      faceapi.draw.drawFaceLandmarks(canvasRef.current, resized);
+
+      // Prepare embedding
       const embedding = Array.from(result.descriptor);
+
+      setStatus("📡 Sending embedding to backend...");
+
       const res = await fetch("http://127.0.0.1:8000/api/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ embedding }),
       });
+
       const json = await res.json();
+
       if (json.matched) {
-        setStatus(`✅ Matched: ${json.student_id} (dist ${json.dist.toFixed(3)})`);
+        setStatus(
+          `✅ Attendance marked: ${json.student_id} (dist ${json.distance.toFixed(
+            3
+          )})`
+        );
       } else {
-        setStatus(`❌ No match (best dist ${json.dist?.toFixed(3) ?? "N/A"})`);
+        setStatus(
+          `❌ No match (closest dist ${json.distance?.toFixed(3) ?? "N/A"})`
+        );
       }
     } catch (err) {
       console.error("Face check error:", err);
-      setStatus("⚠️ face check error: " + (err.message || err));
+      setStatus("⚠️ Face check error: " + (err.message || err));
     }
   }
 
