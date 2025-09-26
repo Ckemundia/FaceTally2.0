@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from db import init_db
-from routes import register, match, attendance
+from routes import register, match, attendance, units, token, reward
+from routes import unit_settings, tutor,users
+
 
 app = FastAPI(title="FRAS Backend")
 
-# ✅ Allow only frontend origins
+# Allow only frontend origins
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -27,3 +29,9 @@ def startup_event():
 app.include_router(register.router, prefix="/api")
 app.include_router(match.router, prefix="/api")
 app.include_router(attendance.router, prefix="/api")
+app.include_router(units.router, prefix="/api")
+app.include_router(token.router, prefix="/api")
+app.include_router(reward.router, prefix="/api")
+app.include_router(unit_settings.router, prefix="/api")
+app.include_router(tutor.router, prefix="/api/tutor")
+app.include_router(users.router, prefix="/api")

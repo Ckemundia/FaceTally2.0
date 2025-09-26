@@ -6,6 +6,12 @@ import json
 
 DB_PATH = os.environ.get("FRAS_DB", "faceattend.db")
 
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row  
+    return conn
+
+# ---------------- INIT ---------------- #
 
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:
@@ -32,9 +38,78 @@ def init_db():
             FOREIGN KEY(student_id) REFERENCES users(student_id)
         )
         """)
-        conn.commit()
-        print("[DB] Initialized database at", DB_PATH)
 
+        # Units table
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS units (
+            unit_code TEXT PRIMARY KEY,
+            unit_name TEXT NOT NULL
+        )
+        """)
+
+        # Student ↔ Units (many-to-many relationship)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS student_units (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT NOT NULL,
+            unit_code TEXT NOT NULL,
+            FOREIGN KEY(student_id) REFERENCES users(student_id),
+            FOREIGN KEY(unit_code) REFERENCES units(unit_code)
+        )
+        """)
+
+        # Rewards table
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS rewards (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT NOT NULL,
+            date TEXT NOT NULL,
+            status TEXT NOT NULL,
+            FOREIGN KEY(student_id) REFERENCES users(student_id),
+            UNIQUE(student_id, date)
+        )
+        """)
+
+        # Unit settings table (NEW)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS unit_settings (
+            unit_code TEXT PRIMARY KEY,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            attendance_limit INTEGER,
+            time_limit TEXT,
+            FOREIGN KEY(unit_code) REFERENCES units(unit_code)
+        )
+        """)
+        
+        conn.commit()
+    
+        # --- Prepopulate units ---
+        default_units = [
+            ("CS101", "Data Structures"),
+            ("CS102", "Machine Learning"),
+            ("CS103", "Communication Skills"),
+            ("CS104", "Python Programming"),
+            ("CS105", "Object Oriented Programming"),
+            ("CS106", "Intro to Programming"),
+            ("CS107", "Software Testing Tools"),
+            ("CS108", "Embedded Systems"),
+            ("CS109", "Project Management"),
+            ("CS110", "Web Development"),
+            ("CS111", "Application Programming"),
+            ("CS112", "Linear Programming"),
+            ("CS113", "Data Science"),
+        ]
+
+        for code, name in default_units:
+            cur.execute(
+                "INSERT OR IGNORE INTO units(unit_code, unit_name) VALUES (?, ?)",
+                (code, name)
+            )
+
+        conn.commit()
+        print("[DB] Initialized database with units at", DB_PATH)
+
+# ---------------- HELPERS ---------------- #
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     a = a / np.linalg.norm(a)
@@ -42,14 +117,20 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b))
 
 
-def save_user(student_id: str, name: str, embedding: np.ndarray, wallet: str | None):
+# ---------------- USERS ---------------- #
+
+def save_user(student_id: str, name: str, embedding: list, wallet: str | None):
+    """
+    Save a new user. Expects embedding as a Python list (not NumPy array).
+    """
     try:
         print(f"[DB] Attempting to save user {student_id} (wallet={wallet})")
 
         # --- Check for duplicate face ---
         users = load_users()
+        emb_arr = np.array(embedding, dtype=np.float32)
         for sid, db_emb in users:
-            sim = cosine_similarity(embedding, db_emb)
+            sim = cosine_similarity(emb_arr, db_emb)
             if sim >= 0.6:  # threshold (tune if needed)
                 raise ValueError(f"Face already registered under student {sid}")
 
@@ -58,7 +139,7 @@ def save_user(student_id: str, name: str, embedding: np.ndarray, wallet: str | N
             cur.execute("""
                 INSERT INTO users(student_id, name, embedding, wallet)
                 VALUES (?, ?, ?, ?)
-            """, (student_id, name, json.dumps(embedding.tolist()), wallet))
+            """, (student_id, name, json.dumps(embedding), wallet))
             conn.commit()
             print(f"[DB] ✅ User {student_id} saved successfully")
 
@@ -98,6 +179,8 @@ def get_user_name(student_id: str):
     return row[0] if row else None
 
 
+# ---------------- ATTENDANCE ---------------- #
+
 def record_attendance(student_id: str, unit: str, txid: str | None = None):
     try:
         with sqlite3.connect(DB_PATH) as conn:
@@ -126,16 +209,159 @@ def last_attendance_time(student_id: str):
     return datetime.datetime.fromisoformat(row[0])
 
 
-def list_attendance(limit: int = 100):
+def list_attendance(limit: int = 100, student_id: str | None = None):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        if student_id:
+            cur.execute("""
+                SELECT id, student_id, timestamp, unit, txid 
+                FROM attendance 
+                WHERE student_id = ?
+                ORDER BY id DESC LIMIT ?
+            """, (student_id, limit))
+        else:
+            cur.execute("""
+                SELECT id, student_id, timestamp, unit, txid 
+                FROM attendance 
+                ORDER BY id DESC LIMIT ?
+            """, (limit,))
+        rows = cur.fetchall()
+
+    return [
+        {"id": r[0], "student_id": r[1], "timestamp": r[2], "unit": r[3], "txid": r[4]}
+        for r in rows
+    ]
+
+
+# ---------------- UNITS ---------------- #
+
+def list_units():
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT unit_code, unit_name FROM units ORDER BY unit_code")
+        return cur.fetchall()
+
+
+def assign_units(student_id: str, unit_codes: list[str]):
+    """
+    Assign one or more units to a student.
+    Expects a list of unit_code strings (e.g., ["CS101", "CS104"]).
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        for code in unit_codes:
+            cur.execute("""
+                INSERT OR IGNORE INTO student_units (student_id, unit_code)
+                VALUES (?, ?)
+            """, (student_id, code))
+        conn.commit()
+
+    
+
+def get_student_units(student_id: str):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, student_id, timestamp, unit, txid 
-            FROM attendance 
-            ORDER BY id DESC LIMIT ?
-        """, (limit,))
+            SELECT u.unit_code, u.unit_name
+            FROM student_units su
+            JOIN units u ON su.unit_code = u.unit_code
+            WHERE su.student_id = ?
+        """, (student_id,))
+        rows = cur.fetchall()
+
+    return [
+        {"unit_code": row[0], "unit_name": row[1]}
+        for row in rows
+    ]
+
+
+def get_units():
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT unit_code, unit_name FROM units")
+        rows = cur.fetchall()
+    return [{"unit_code": r[0], "unit_name": r[1]} for r in rows]
+
+
+# ---------------- REWARDS ---------------- #
+
+def log_reward_claim(student_id: str, date: str, status: str = "claimed"):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT OR IGNORE INTO rewards(student_id, date, status)
+            VALUES (?, ?, ?)
+        """, (student_id, date, status))
+        conn.commit()
+
+
+def list_rewards(student_id: str, limit: int = 50):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, student_id, date, status
+            FROM rewards
+            WHERE student_id = ?
+            ORDER BY date DESC LIMIT ?
+        """, (student_id, limit))
         rows = cur.fetchall()
     return [
-        {"id": r[0], "student_id": r[1], "timestamp": r[2], "unit": r[3], "txid": r[4]}
+        {"id": r[0], "student_id": r[1], "date": r[2], "status": r[3]}
+        for r in rows
+    ]
+
+def set_unit_status(unit_code: str, active: bool, attendance_limit: int | None = None):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO unit_settings (unit_code, is_active, attendance_limit)
+            VALUES (?, ?, ?)
+            ON CONFLICT(unit_code) DO UPDATE 
+                SET is_active = excluded.is_active,
+                    attendance_limit = excluded.attendance_limit
+        """, (unit_code, int(active), attendance_limit))
+        conn.commit()
+
+
+def get_unit_status(unit_code: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT is_active, attendance_limit FROM unit_settings WHERE unit_code=?", (unit_code,))
+        row = cur.fetchone()
+    return {
+        "is_active": bool(row[0]),
+        "attendance_limit": row[1]
+    } if row else {"is_active": False, "attendance_limit": None}
+
+def list_students_with_attendance(unit_code: str, date: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT u.student_id, u.name, 
+                   CASE WHEN a.id IS NOT NULL THEN 1 ELSE 0 END as present
+            FROM users u
+            JOIN student_units su ON u.student_id = su.student_id
+            LEFT JOIN attendance a 
+               ON a.student_id = u.student_id 
+               AND a.unit = su.unit_code
+               AND date(a.timestamp) = ?
+            WHERE su.unit_code = ?
+        """, (date, unit_code))
+        rows = cur.fetchall()
+    return [{"student_id": r[0], "name": r[1], "present": bool(r[2])} for r in rows]
+
+def export_attendance(unit_code: str, date: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT a.student_id, u.name, a.timestamp, a.unit
+            FROM attendance a
+            JOIN users u ON a.student_id = u.student_id
+            WHERE a.unit = ? AND date(a.timestamp) = ?
+            ORDER BY a.timestamp
+        """, (unit_code, date))
+        rows = cur.fetchall()
+    return [
+        {"student_id": r[0], "name": r[1], "timestamp": r[2], "unit": r[3]}
         for r in rows
     ]
