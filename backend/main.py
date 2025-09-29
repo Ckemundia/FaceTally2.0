@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from db import init_db
 from routes import register, match, attendance, units, token, reward
 from routes import unit_settings, tutor,users
+from routes import hcs
+from routes import wallet
 
 
 app = FastAPI(title="FRAS Backend")
@@ -35,3 +37,5 @@ app.include_router(reward.router, prefix="/api")
 app.include_router(unit_settings.router, prefix="/api")
 app.include_router(tutor.router, prefix="/api/tutor")
 app.include_router(users.router, prefix="/api")
+app.include_router(hcs.router, prefix="/api")
+app.include_router(wallet.router, prefix="/api")

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
 from db import record_attendance, list_attendance, get_unit_status
@@ -21,11 +21,9 @@ def mark_attendance(payload: AttendanceIn):
     ✅ Respects attendance limit if set.
     """
     try:
-        # --- Validate input ---
         if not payload.student_id or not payload.unit:
             raise HTTPException(status_code=400, detail="Missing student_id or unit")
 
-        # --- Check unit status ---
         status = get_unit_status(payload.unit)
         if not status:
             raise HTTPException(status_code=404, detail=f"Unit '{payload.unit}' not found in settings")
@@ -33,10 +31,8 @@ def mark_attendance(payload: AttendanceIn):
         if not status.get("is_active", False):
             raise HTTPException(status_code=403, detail=f"Attendance is disabled for unit '{payload.unit}'")
 
-        # --- Enforce attendance limit (if set) ---
         limit = status.get("limit")
         if limit is not None:
-            # Retrieve only this unit’s records to avoid large queries
             records = list_attendance(limit=1000)
             unit_records = [r for r in records if r["unit"] == payload.unit]
             if len(unit_records) >= limit:
@@ -45,7 +41,6 @@ def mark_attendance(payload: AttendanceIn):
                     detail=f"Attendance limit ({limit}) reached for unit '{payload.unit}'"
                 )
 
-        # --- Record attendance ---
         record_attendance(payload.student_id, payload.unit, payload.txid)
 
         return {
@@ -71,9 +66,19 @@ def get_attendance(limit: int = 50):
 
 
 @router.get("/attendance/history")
-def attendance_history(limit: int = 20):
-    """Return latest attendance records (for dashboard view)."""
+def attendance_history(
+    student_id: Optional[str] = Query(None, description="Filter by student ID"),
+    limit: int = 20
+):
+    """
+    Return latest attendance records.
+    If student_id is provided, return only their history.
+    """
     try:
-        return {"records": list_attendance(limit=limit)}
+        records = list_attendance(limit=1000)  # get enough records
+        if student_id:
+            records = [r for r in records if r["student_id"] == student_id]
+        # return only latest 'limit'
+        return {"records": records[:limit]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"History fetch failed: {str(e)}")

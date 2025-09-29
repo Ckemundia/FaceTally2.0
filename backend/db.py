@@ -262,17 +262,26 @@ def get_student_units(student_id: str):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT u.unit_code, u.unit_name
+            SELECT 
+                u.unit_code, 
+                u.unit_name,
+                COALESCE(us.is_active, 0) as is_active
             FROM student_units su
             JOIN units u ON su.unit_code = u.unit_code
+            LEFT JOIN unit_settings us ON u.unit_code = us.unit_code
             WHERE su.student_id = ?
         """, (student_id,))
         rows = cur.fetchall()
 
     return [
-        {"unit_code": row[0], "unit_name": row[1]}
+        {
+            "unit_code": row[0],
+            "unit_name": row[1],
+            "is_active": bool(row[2])
+        }
         for row in rows
     ]
+
 
 
 def get_units():
@@ -365,3 +374,20 @@ def export_attendance(unit_code: str, date: str):
         {"student_id": r[0], "name": r[1], "timestamp": r[2], "unit": r[3]}
         for r in rows
     ]
+
+def get_student_by_id(student_id: str):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT student_id, name, wallet
+        FROM users
+        WHERE student_id = ?
+    """, (student_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row is None:
+        print(f"[DEBUG] get_student_by_id: No student found for {student_id}")
+    return dict(row) if row else None

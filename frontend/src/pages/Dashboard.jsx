@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import WebcamFace from "../components/WebcamFace";
+import HCSMessages from "../components/HCSMessages";
 
 export default function Dashboard() {
   const [records, setRecords] = useState([]);
@@ -9,25 +10,38 @@ export default function Dashboard() {
   const [currentStudent, setCurrentStudent] = useState(null);
   const [latestRecord, setLatestRecord] = useState(null);
 
-  /** ✅ Fetch attendance history */
-  const fetchHistory = async () => {
-    try {
-      const res = await fetch("/api/attendance/history");
-      if (!res.ok) throw new Error("Failed to fetch attendance history");
-      const data = await res.json();
-      setRecords(data.records ?? data.rows ?? []);
-    } catch (err) {
-      console.error("❌ History fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  /** Fetch attendance history */
+  /** Fetch attendance history */
+const fetchHistory = async (studentId = null) => {
+  try {
+    const url = studentId
+      ? `/api/attendance/history?student_id=${studentId}`
+      : `/api/attendance/history`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to fetch attendance history");
+    const data = await res.json();
+    setRecords(data.records ?? []);
+  } catch (err) {
+    console.error("❌ History fetch error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  /** ✅ Fetch units for selected student */
-  const fetchUnits = async () => {
-    if (!currentStudent?.student_id) return; // 🛑 Skip if no student selected
+/** Re-fetch history every 5 seconds */
+useEffect(() => {
+  // 🔹 Always fetch history for the current student (if available)
+  const studentId = currentStudent?.student_id || null;
+  fetchHistory(studentId);
+  const interval = setInterval(() => fetchHistory(studentId), 5000);
+  return () => clearInterval(interval);
+}, [currentStudent]);
+
+  /** Fetch units for selected student */
+  const fetchUnits = async (student_id) => {
+    if (!student_id) return;
     try {
-      const res = await fetch(`/api/units/myunits/${currentStudent.student_id}`);
+      const res = await fetch(`/api/units/myunits/${student_id}`);
       if (!res.ok) throw new Error("Failed to fetch units");
       const data = await res.json();
       const unitsData = data.units ?? [];
@@ -40,68 +54,69 @@ export default function Dashboard() {
     }
   };
 
-  /** ⏱ Fetch attendance history every 5 seconds */
+  /** Re-fetch history every 5 seconds */
   useEffect(() => {
     fetchHistory();
     const interval = setInterval(fetchHistory, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  /** 🔁 Re-fetch units when student changes */
+  /** Re-fetch units when current student changes */
   useEffect(() => {
-    fetchUnits();
+    if (currentStudent?.student_id) {
+      fetchUnits(currentStudent.student_id);
+    }
   }, [currentStudent]);
 
-  /** 📸 Triggered when attendance is marked */
+  /** Handle face recognition or attendance marking */
   const handleAttendanceMarked = ({ student, attendanceRecorded }) => {
-    setCurrentStudent(student);
-    if (attendanceRecorded) {
+    if (student && !attendanceRecorded) {
+      setCurrentStudent(student);
+    } else if (attendanceRecorded) {
       setLatestRecord({ student, unit: selectedUnit });
-      fetchHistory(); // refresh list
+      fetchHistory();
     }
   };
 
-  /** 🎯 Check if latest record is eligible for reward */
-  const canClaimReward = latestRecord
-    ? records.some(
-        (r) =>
-          r.student_id === latestRecord.student.student_id &&
-          r.unit === latestRecord.unit &&
-          !r.txid
-      )
-    : false;
+  /** Reward check */
+const canClaimReward = latestRecord
+  ? records.some(
+      (r) =>
+        r.student_id === latestRecord.student.student_id &&
+        r.unit === latestRecord.unit &&
+        !r.txid
+    )
+  : false;
 
-  /** 💰 Claim reward */
-  const claimReward = async () => {
-    if (!currentStudent?.wallet) return alert("⚠️ Wallet not found");
-    try {
-      const res = await fetch("/api/reward/give", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          student_wallet: currentStudent.wallet,
-          amount: 1,
-        }),
-      });
-      const data = await res.json();
-      if (data.status === "success") {
-        alert("🎉 Reward sent! TXID: " + data.tx_id);
-        fetchHistory();
-        setLatestRecord(null);
-      } else {
-        alert("⚠️ Reward failed: " + (data.message || "Unknown error"));
-      }
-    } catch (err) {
-      console.error("❌ Reward request failed:", err);
-      alert("⚠️ Reward request failed");
+  /** Claim reward */
+const claimReward = async () => {
+  if (!latestRecord?.student?.wallet) return alert("⚠️ Wallet not found");
+
+  try {
+    const res = await fetch("/api/reward/give", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        student_wallet: latestRecord.student.wallet,
+        amount: 1,
+      }),
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      alert("🎉 Reward sent! TXID: " + data.tx_id);
+      fetchHistory();
+      setLatestRecord(null);
+    } else {
+      alert("⚠️ Reward failed: " + (data.message || "Unknown error"));
     }
-  };
+  } catch (err) {
+    console.error("❌ Reward request failed:", err);
+    alert("⚠️ Reward request failed");
+  }
+};
 
   const selectedUnitObj = units.find((u) => u.unit_code === selectedUnit);
-  const unitDisabled =
-    !selectedUnitObj ||
-    selectedUnitObj.status !== "active" ||
-    selectedUnitObj.remaining_slots === 0;
+  const unitDisabled = !selectedUnitObj || !selectedUnitObj.is_active;
 
   return (
     <div
@@ -113,12 +128,10 @@ export default function Dashboard() {
         padding: "20px",
       }}
     >
-      {/* Background Circles */}
       {[...Array(6)].map((_, i) => (
         <div key={i} className={`circle circle${i + 1}`} />
       ))}
 
-      {/* Main Dashboard Card */}
       <div
         style={{
           margin: "40px auto",
@@ -131,9 +144,8 @@ export default function Dashboard() {
           boxShadow: "0 0 30px rgba(0,0,0,0.7)",
         }}
       >
-        {/* LEFT SECTION */}
+        {/* LEFT */}
         <div style={{ flex: 2 }}>
-          {/* Greeting */}
           {currentStudent && (
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "25px" }}>
               <div
@@ -161,12 +173,10 @@ export default function Dashboard() {
 
           <h2 style={{ color: "#60a5fa", textShadow: "0 0 5px #60a5fa" }}>📷 Live Camera</h2>
 
-          {/* Unit Selector */}
+          {/* Unit Selector + Mark Button */}
           {units.length > 0 && (
-            <div style={{ marginBottom: "15px" }}>
-              <label style={{ color: "#cbd5e1", marginRight: "10px" }}>
-                Select Unit:
-              </label>
+            <div style={{ marginBottom: "15px", display: "flex", alignItems: "center", gap: "10px" }}>
+              <label style={{ color: "#cbd5e1" }}>Select Unit:</label>
               <select
                 value={selectedUnit}
                 onChange={(e) => setSelectedUnit(e.target.value)}
@@ -179,28 +189,81 @@ export default function Dashboard() {
                 }}
               >
                 {units.map((u) => (
-                  <option
-                    key={u.unit_code}
-                    value={u.unit_code}
-                    disabled={u.status !== "active" || u.remaining_slots === 0}
-                  >
-                    {u.unit_name}{" "}
-                    {u.status !== "active" ? "(Disabled)" : ""}{" "}
-                    {u.remaining_slots !== undefined
-                      ? `(${u.remaining_slots} left)`
-                      : ""}
+                  <option key={u.unit_code} value={u.unit_code} disabled={!u.is_active}>
+                    {u.unit_name} {u.is_active ? "" : "(Disabled)"}
                   </option>
                 ))}
               </select>
+
+              {currentStudent && selectedUnit && (
+                  <button
+            onClick={async () => {
+              if (!currentStudent) return;
+              if (!selectedUnitObj?.is_active) {
+                alert("⚠️ Cannot mark attendance for disabled unit.");
+                return;
+              }
+              try {
+                const res = await fetch("/api/attendance", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    student_id: currentStudent.student_id,
+                    unit: selectedUnit,
+                  }),
+                });
+                const data = await res.json();
+                if (data.ok) {
+                  alert(`🎉 Attendance marked for ${selectedUnit}`);
+                  handleAttendanceMarked({ student: currentStudent, attendanceRecorded: true });
+
+                  // 🔹 Publish to Hedera Consensus Service
+                  await fetch("/api/hcs/publish", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      student_id: currentStudent.student_id,
+                      unit: selectedUnit,
+                      status: "present",
+                    }),
+                  });
+
+                  // 🔹 Reset student so detection resumes
+                  setCurrentStudent(null);
+                } else {
+                  alert("⚠️ Attendance failed: " + (data.detail || "Unknown error"));
+                }
+              } catch (err) {
+                console.error(err);
+                alert("❌ Attendance request failed");
+              }
+            }}
+            disabled={unitDisabled}
+            style={{
+              padding: "8px 16px",
+              background: unitDisabled ? "#ccc" : "#34d399",
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              cursor: unitDisabled ? "not-allowed" : "pointer",
+            }}
+          >
+            Mark Attendance
+          </button>
+
+                )}
             </div>
           )}
 
-          {/* Webcam Component */}
-          <WebcamFace
-            selectedUnit={selectedUnit || null}
-            onAttendanceMarked={handleAttendanceMarked}
-            disabled={!selectedUnit || unitDisabled}
-          />
+          {/* Webcam */}
+
+            <WebcamFace
+              selectedUnit={selectedUnit || null}
+              onAttendanceMarked={handleAttendanceMarked}
+              disabled={!selectedUnit || unitDisabled}
+              pauseDetection={!!currentStudent} // 🔹 added prop
+            />
+
 
           {unitDisabled && selectedUnit && (
             <p style={{ color: "#f87171", marginTop: "10px" }}>
@@ -209,11 +272,9 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* RIGHT SECTION */}
+        {/* RIGHT */}
         <div style={{ flex: 1 }}>
-          <h2 style={{ color: "#34d399", textShadow: "0 0 6px #34d399" }}>
-            📜 Attendance History
-          </h2>
+          <h2 style={{ color: "#34d399", textShadow: "0 0 6px #34d399" }}>📜 Attendance History</h2>
           <div
             style={{
               maxHeight: "500px",
@@ -245,9 +306,24 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+        {/* 🌐 Hedera Ledger Viewer */}
+<h2 style={{ color: "#60a5fa", textShadow: "0 0 6px #60a5fa" }}>🌐 HCS Ledger</h2>
+<div
+  style={{
+    maxHeight: "300px",
+    overflowY: "auto",
+    border: "1px solid #374151",
+    padding: "15px",
+    borderRadius: "10px",
+    background: "#111827",
+  }}
+>
+  <HCSMessages />
+</div>
+
       </div>
 
-      {/* 🎁 Reward Modal */}
+      {/* Reward Modal */}
       {latestRecord && (
         <div
           onClick={() => setLatestRecord(null)}
