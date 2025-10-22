@@ -7,36 +7,62 @@ export default function Home() {
   const [headingText, setHeadingText] = useState("");
   const [showContent, setShowContent] = useState(false);
 
-  const heading = "WELCOME TO ATTENDIFY";
+  const heading = "WELCOME TO FACE TALLY";
 
   useEffect(() => {
-    let i = 0;
-    let forward = true;
-    const interval = setInterval(() => {
+  let i = 0;
+  let forward = true;
+  let interval;
+
+  const typeEffect = () => {
+    interval = setInterval(() => {
       if (forward) {
         setHeadingText(heading.slice(0, i + 1));
         i++;
+
         if (i === heading.length) {
-          forward = false;
-          // show subtext and buttons after heading completes
-          setTimeout(() => setShowContent(true), 300);
+          clearInterval(interval);
+          setShowContent(true);
+
+          // Hold for 60 seconds before fading and erasing
+          setTimeout(() => {
+            const headingEl = document.querySelector("h1");
+            if (headingEl) {
+              headingEl.style.transition = "opacity 1s ease";
+              headingEl.style.opacity = "0"; // Fade out
+            }
+
+            // Wait for fade to complete before erasing
+            setTimeout(() => {
+              if (headingEl) headingEl.style.opacity = "1"; // Reset opacity
+              forward = false;
+              typeEffect(); // Restart interval for erase
+            }, 1000); // 1s fade duration
+          }, 60000);
         }
       } else {
         setHeadingText(heading.slice(0, i - 1));
         i--;
-        if (i === 0) forward = true;
+
+        if (i === 0) {
+          clearInterval(interval);
+          forward = true;
+          setShowContent(false);
+
+          // small pause before retyping again
+          setTimeout(() => {
+            typeEffect();
+          }, 1000);
+        }
       }
     }, 120);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleLogin = () => {
-    if (wallet.startsWith("0.0.68")) {
-      window.location.href = "/dashboard";
-    } else {
-      window.location.href = "/tutor";
-    }
   };
+
+  typeEffect();
+
+  return () => clearInterval(interval);
+}, []);
+
 
   return (
     <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden" }}>
@@ -44,10 +70,47 @@ export default function Home() {
       {[...Array(6)].map((_, i) => <div key={i} className={`circle circle${i+1}`}></div>)}
 
       {/* Navbar */}
-      <nav style={navBar}>
-        <h2 style={{ margin: 0, color: "#fff" }}>Attendify</h2>
-        <a href="/register" style={navLink}>Register</a>
-      </nav>
+          <nav style={navBar}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <img
+                src="/logo.png"
+                alt="Facetally Logo"
+                className="logo-glow"
+                style={{
+                  width: "100px",
+                  height: "100px",
+                  objectFit: "contain",
+                  filter: "drop-shadow(0 0 5px #3b82f6)",
+                  transition: "transform 0.3s ease, filter 0.3s ease",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.1)";
+                  e.currentTarget.style.filter = "drop-shadow(0 0 15px #60a5fa)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.filter = "drop-shadow(0 0 5px #3b82f6)";
+                }}
+              />
+              <h2 style={{ margin: 0, color: "#fff", fontWeight: 800 }}></h2>
+            </div>
+            <a href="/register" style={navLink}>Register</a>
+
+            {/* Logo animation style */}
+            <style>{`
+              @keyframes softGlow {
+                0% { filter: drop-shadow(0 0 5px #3b82f6); }
+                50% { filter: drop-shadow(0 0 15px #60a5fa); }
+                100% { filter: drop-shadow(0 0 5px #3b82f6); }
+              }
+
+              .logo-glow {
+                animation: softGlow 2.5s infinite ease-in-out;
+              }
+            `}</style>
+          </nav>
+
 
       {/* Main content */}
       <div style={{ textAlign: "center", marginTop: "120px", position: "relative", zIndex: 5 }}>

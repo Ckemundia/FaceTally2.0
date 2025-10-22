@@ -595,3 +595,51 @@ small {
     transform: scale(1);
   }
 }
+
+/* ---- Dashboard Layout Override ---- */
+.tutor-root {
+  display: flex;
+  flex-direction: row;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  background: #0f1724;
+}
+
+.tutor-root main {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+}
+
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: #0b1220;
+  border-right: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 2;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -260px;
+    height: 100vh;
+    transition: left 0.3s ease;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .tutor-root main {
+    padding: 16px;
+  }
+}

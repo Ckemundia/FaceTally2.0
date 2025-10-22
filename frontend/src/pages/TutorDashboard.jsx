@@ -1,13 +1,13 @@
-// src/pages/TutorDashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import {
   FiUsers,
-  FiCheckCircle,
   FiGift,
   FiDownload,
-  FiSettings,
-  FiSearch,
-  FiChevronRight,
+  FiMenu,
+  FiChevronLeft,
+  FiCalendar,
+  FiClock,
+  FiBook
 } from "react-icons/fi";
 
 import { Button } from "../components/ui/button";
@@ -16,18 +16,18 @@ import { Dialog } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Progress } from "../components/ui/progress";
 import { Select } from "../components/ui/select";
-import { Table } from "../components/ui/table";
 
+import "../style.css";
+import logo from "../logo.png";
 
 
 export default function TutorDashboard() {
-  // data
-  const [attendance, setAttendance] = useState([]); // raw attendance rows
-  const [students, setStudents] = useState([]); // students list
+  // --- State as before ---
+  const [attendance, setAttendance] = useState([]);
+  const [students, setStudents] = useState([]);
   const [stats, setStats] = useState({ rewards: 0, total: 0, present: 0 });
   const [allUnits, setAllUnits] = useState([]);
 
-  // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -35,125 +35,100 @@ export default function TutorDashboard() {
   const [selectedDate, setSelectedDate] = useState("");
   const [search, setSearch] = useState("");
 
-  const [unitEnabled, setUnitEnabled] = useState({}); // map unit => bool
-  const [timeLimitMap, setTimeLimitMap] = useState({}); // map unit => "HH:MM"
+  const [unitEnabled, setUnitEnabled] = useState({});
+  
 
-  // modals
   const [showUnitModal, setShowUnitModal] = useState(false);
-  const [unitModalValue, setUnitModalValue] = useState(""); // selected unit in modal
+  const [unitModalValue, setUnitModalValue] = useState("");
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [downloadUnit, setDownloadUnit] = useState("");
   const [downloadDate, setDownloadDate] = useState("");
 
-  // Fetch attendance & students & stats
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState("units");
+
+  const [timeLimitMap, setTimeLimitMap] = useState({});
+  const [geoLimitMap, setGeoLimitMap] = useState({});
+
+  // --- Data fetching unchanged ---
   useEffect(() => {
     let mounted = true;
-
     async function fetchAll() {
-  setLoading(true);
-  setError(null);
-  try {
-    const [attRes, statRes, usersRes, statusRes, unitsRes] = await Promise.allSettled([
-      fetch("/api/attendance/history"),
-      fetch("/api/tutor/stats"),
-      fetch("/api/users"),
-      fetch("/api/tutor/units/status"), 
-      fetch("/api/units"),
-    ]);
+      setLoading(true);
+      setError(null);
+      try {
+        const [attRes, statRes, usersRes, statusRes, unitsRes] =
+          await Promise.allSettled([
+            fetch("/api/attendance/history"),
+            fetch("/api/tutor/stats"),
+            fetch("/api/users"),
+            fetch("/api/tutor/units/status"),
+            fetch("/api/units"),
+          ]);
 
-    // 📘 Attendance
-    if (attRes.status === "fulfilled" && attRes.value.ok) {
-      const a = await attRes.value.json();
-      const rows = a.records ?? a.rows ?? a;
-      if (mounted) setAttendance(Array.isArray(rows) ? rows : []);
-    }
+        if (attRes.status === "fulfilled" && attRes.value.ok) {
+          const a = await attRes.value.json();
+          const rows = a.records ?? a.rows ?? a;
+          if (mounted) setAttendance(Array.isArray(rows) ? rows : []);
+        }
 
-    // 📊 Stats
-    if (statRes.status === "fulfilled" && statRes.value.ok) {
-      const s = await statRes.value.json();
-      if (mounted) setStats((prev) => ({ ...prev, ...s }));
-    }
-    // 📘 Units
-    if (unitsRes.status === "fulfilled" && unitsRes.value.ok) {
-      const u = await unitsRes.value.json();
-      const rows = u.units ?? u.rows ?? u;
-      if (Array.isArray(rows) && mounted) {
-        setAllUnits(rows.map(r => r.unit_code ?? r.code ?? r.name));
+        if (statRes.status === "fulfilled" && statRes.value.ok) {
+          const s = await statRes.value.json();
+          if (mounted) setStats((p) => ({ ...p, ...s }));
+        }
+
+        if (unitsRes.status === "fulfilled" && unitsRes.value.ok) {
+          const u = await unitsRes.value.json();
+          const rows = u.units ?? u.rows ?? u;
+          if (Array.isArray(rows) && mounted) {
+            setAllUnits(
+              rows.map((r) => ({
+                code: r.unit_code ?? r.code ?? "N/A",
+                name: r.unit_name ?? r.name ?? r.title ?? "Unnamed Unit",
+              }))
+            );
+          }
+        }
+
+        if (usersRes.status === "fulfilled" && usersRes.value.ok) {
+          const u = await usersRes.value.json();
+          const rows = u.rows ?? u.users ?? u;
+          if (Array.isArray(rows) && mounted) {
+            const normalized = rows.map((r) => ({
+              student_id: r.student_id ?? r.id,
+              name: r.name ?? r.student_id ?? r.id,
+            }));
+            setStudents(normalized);
+          }
+        }
+
+        if (statusRes.status === "fulfilled" && statusRes.value.ok) {
+          const data = await statusRes.value.json();
+          if (mounted && data.enabledMap) setUnitEnabled(data.enabledMap);
+        }
+      } catch {
+        if (mounted) setError("Failed to load data");
+      } finally {
+        if (mounted) setLoading(false);
       }
     }
-
-    // 👥 Users
-    if (usersRes.status === "fulfilled" && usersRes.value.ok) {
-      const u = await usersRes.value.json();
-      const rows = u.rows ?? u.users ?? u;
-      if (Array.isArray(rows) && mounted) {
-        const normalized = rows.map((r) => ({
-          student_id: r.student_id ?? r.id,
-          name: r.name ?? r.student_id ?? r.id,
-        }));
-        setStudents(normalized);
-      }
-    } else {
-      // fallback from attendance
-      if (mounted) {
-        const map = new Map();
-        (attendance || []).forEach((r) => {
-          const id = r.student_id ?? r.studentId ?? r.student;
-          if (!map.has(id)) map.set(id, { student_id: id, name: r.name ?? id });
-        });
-        setStudents(Array.from(map.values()));
-      }
-    }
-
-    // 🧩 NEW: Unit status
-    if (statusRes.status === "fulfilled" && statusRes.value.ok) {
-      const data = await statusRes.value.json();
-      if (mounted && data.enabledMap) {
-        setUnitEnabled(data.enabledMap);
-      }
-    }
-
-  } catch (err) {
-    if (mounted) setError("Failed to load data");
-  } finally {
-    if (mounted) setLoading(false);
-  }
-}
-
-fetchAll();
-return () => (mounted = false);
-// eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchAll();
+    return () => (mounted = false);
   }, []);
 
-  // derive units
-  const units = useMemo(() => {
-  const s = new Set(allUnits); // always include backend units
-  (attendance || []).forEach((r) => r.unit && s.add(r.unit)); // plus any from attendance
-  return Array.from(s).sort();
-}, [attendance, allUnits]);
-
-
-  // init unit enabled/timeLimit state when units change
-  useEffect(() => {
-    setUnitEnabled((prev) => {
-      const copy = { ...prev };
-      units.forEach((u) => {
-        if (!(u in copy)) copy[u] = true;
-      });
-      return copy;
+  // --- Derived and filtered data ---
+    const units = useMemo(() => {
+    const map = new Map();
+    allUnits.forEach((u) => map.set(u.code, u));
+    attendance.forEach((r) => {
+      if (r.unit && !map.has(r.unit))
+        map.set(r.unit, { code: r.unit, name: r.unit });
     });
-    setTimeLimitMap((prev) => {
-      const copy = { ...prev };
-      units.forEach((u) => {
-        if (!(u in copy)) copy[u] = "";
-      });
-      return copy;
-    });
-  }, [units]);
+    return Array.from(map.values());
+  }, [attendance, allUnits]);
 
-  // filtered attendance by selectedUnit & date
   const filteredAttendance = useMemo(() => {
-    return (attendance || []).filter((r) => {
+    return attendance.filter((r) => {
       const ts = r.timestamp ?? r.created_at ?? "";
       const dateOk = selectedDate ? ts.startsWith(selectedDate) : true;
       const unitOk = selectedUnit ? r.unit === selectedUnit : true;
@@ -161,7 +136,6 @@ return () => (mounted = false);
     });
   }, [attendance, selectedUnit, selectedDate]);
 
-  // search students (applies to table)
   const searchedStudents = useMemo(() => {
     const q = (search || "").trim().toLowerCase();
     if (!q) return students;
@@ -172,470 +146,634 @@ return () => (mounted = false);
     );
   }, [students, search]);
 
-  // CSV generation (client-side)
-  function downloadCSV(rows, fileName = "attendance.csv") {
-    if (!rows || rows.length === 0) {
-      alert("No records to download");
-      return;
-    }
-    const header = ["id", "student_id", "name", "timestamp", "unit", "txid"];
-    const lines = [header.join(",")];
-    rows.forEach((r) => {
-      const line = [
-        r.id ?? "",
-        `"${(r.student_id ?? "").toString().replace(/"/g, '""')}"`,
-        `"${(r.name ?? "").toString().replace(/"/g, '""')}"`,
-        `"${(r.timestamp ?? "").toString().replace(/"/g, '""')}"`,
-        `"${(r.unit ?? "").toString().replace(/"/g, '""')}"`,
-        `"${(r.txid ?? "").toString().replace(/"/g, '""')}"`,
-      ];
-      lines.push(line.join(","));
-    });
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
+  // --- Helpers ---
+  const presentCountForUnit = (u) =>
+    attendance.filter((r) => r.unit === u && r.txid).length || 0;
 
-  const handleDownloadModal = () => {
-    const rows = attendance.filter((r) => {
-      const dateOk = downloadDate ? (r.timestamp ?? "").startsWith(downloadDate) : true;
-      const unitOk = downloadUnit ? r.unit === downloadUnit : true;
-      return dateOk && unitOk;
-    });
-    if (!rows.length) {
-      alert("No records for selected filters");
-      return;
+  const toggleUnitEnabled = async (u) => {
+    const newValue = !unitEnabled[u];
+    setUnitEnabled((prev) => ({ ...prev, [u]: newValue }));
+    try {
+      await fetch(`/api/tutor/units/${u}/toggle?enabled=${newValue}`, {
+        method: "POST",
+      });
+    } catch {
+      setUnitEnabled((prev) => ({ ...prev, [u]: !newValue }));
     }
-    const fileName = `attendance_${downloadUnit || "all"}_${downloadDate || "all"}.csv`;
-    downloadCSV(rows, fileName);
-    setShowDownloadModal(false);
   };
 
-  // toggle unit attendance (local state; replace with API call if desired)
-  const toggleUnitEnabled = async (u) => {
-  const newValue = !unitEnabled[u]; // what tutor wants
-  setUnitEnabled((prev) => ({ ...prev, [u]: newValue })); // update UI first
+  const borderColors = [
+    "#7c3aed",
+    "#06b6d4",
+    "#34d399",
+    "#fb923c",
+    "#ef4444",
+    "#f97316",
+    "#60a5fa",
+    "#a78bfa",
+  ];
 
-  try {
-    await fetch(`/api/tutor/units/${u}/toggle?enabled=${newValue}`, {
-      method: "POST",
+  // --------------------- Render Views ----------------------
+
+  function UnitsView() {
+  return (
+    <div style={{ width: "100%", padding: "20px" }}>
+      <h2 className="text-2xl font-extrabold text-blue-300 mb-6">Units</h2>
+
+      {/* Responsive grid with equal height cards */}
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+          gap: "24px",
+        }}
+      >
+        {units.map((u, idx) => {
+          const color = borderColors[idx % borderColors.length];
+          return (
+            <div
+              key={u}
+              className="transition-all duration-300 transform hover:-translate-y-2 hover:shadow-[0_8px_30px_rgba(59,130,246,0.3)]"
+              style={{
+                border: `2px solid ${color}`,
+                boxShadow: `0 4px 16px ${color}22`,
+                background:
+                  "linear-gradient(180deg, rgba(11,18,32,0.65), rgba(11,18,32,0.4))",
+                borderRadius: "14px",
+                padding: "16px",
+                backdropFilter: "blur(5px)",
+                color: "#e6eef8",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                minHeight: "160px", 
+                transition: "all 0.3s ease",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 700,
+                    color: "#7dd3fc",
+                  }}
+                >
+                  {u.name}
+                </div>
+                <div style={{ fontSize: "13px", color: "#a5b4fc" }}>
+                  {u.code}
+                </div>
+                <div style={{ fontSize: "14px", color: "#94a3b8" }}>
+                  {presentCountForUnit(u)} present
+                </div>
+              </div>
+
+              <Button
+                onClick={() => {
+                  setSelectedUnit(u);
+                  setActiveTab("attendance");
+                }}
+                style={{
+                  marginTop: "12px",
+                  padding: "8px 10px",
+                  borderRadius: "8px",
+                  backgroundColor: "#2563eb",
+                  color: "#fff",
+                  transition: "all 0.3s ease",
+                  boxShadow: "0 0 0 rgba(59,130,246,0)",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.boxShadow =
+                    "0 0 15px rgba(59,130,246,0.6)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.boxShadow = "0 0 0 rgba(59,130,246,0)")
+                }
+              >
+                View Attendance
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function LimitsView() {
+  const [localLimits, setLocalLimits] = useState({});
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    const init = {};
+    units.forEach((u) => {
+      init[u.code] = {
+        timeLimit: timeLimitMap[u.code] || { start: "", end: "" },
+        geo: geoLimitMap[u.code] || {
+          enabled: false,
+          lat: "",
+          lng: "",
+          radius: "",
+        },
+      };
     });
-  } catch (err) {
-    console.error("Failed to update unit status", err);
-    // rollback if API fails
-    setUnitEnabled((prev) => ({ ...prev, [u]: !newValue }));
+    setLocalLimits(init);
+  }, [units, timeLimitMap, geoLimitMap]);
+
+  const handleTimeChange = (unitCode, field, value) => {
+    setLocalLimits((prev) => {
+      const updated = {
+        ...prev,
+        [unitCode]: {
+          ...prev[unitCode],
+          timeLimit: { ...prev[unitCode].timeLimit, [field]: value },
+        },
+      };
+
+      const { start, end } = updated[unitCode].timeLimit;
+      if (start && end && start >= end) {
+        setErrors((e) => ({
+          ...e,
+          [unitCode]: "End time must be after start time",
+        }));
+      } else {
+        setErrors((e) => {
+          const copy = { ...e };
+          delete copy[unitCode];
+          return copy;
+        });
+      }
+
+      return updated;
+    });
+  };
+
+  const handleGeoChange = (unitCode, field, value) => {
+    setLocalLimits((prev) => ({
+      ...prev,
+      [unitCode]: {
+        ...prev[unitCode],
+        geo: { ...prev[unitCode].geo, [field]: value },
+      },
+    }));
+  };
+
+  const handleUseMyLocation = (unitCode) => {
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported in this browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        handleGeoChange(unitCode, "lat", latitude.toFixed(6));
+        handleGeoChange(unitCode, "lng", longitude.toFixed(6));
+      },
+      (err) => alert("Failed to get location: " + err.message)
+    );
+  };
+
+  const handleSave = async (unitCode) => {
+    const { timeLimit, geo } = localLimits[unitCode];
+    setTimeLimitMap((p) => ({ ...p, [unitCode]: timeLimit }));
+    setGeoLimitMap((p) => ({ ...p, [unitCode]: geo }));
+
+    try {
+      await fetch(`/api/tutor/units/${unitCode}/limits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeLimit, geo }),
+      });
+      alert(`Saved limits for ${unitCode}`);
+    } catch {
+      alert("Failed to save limits.");
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-6 w-full">
+      <h2 className="text-2xl font-extrabold text-blue-300">Attendance Limits</h2>
+
+      {/* ✅ Proper grid layout */}
+      <div
+        className="grid gap-6 w-full"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          alignItems: "start",
+          gap: "24px",
+        }}
+      >
+        {units.map((u, idx) => {
+          const color = borderColors[idx % borderColors.length];
+          const data = localLimits[u.code] || {};
+          const time = data.timeLimit || {};
+          const geo = data.geo || {};
+          const errorMsg = errors[u.code];
+
+          return (
+            <div
+              key={u.code}
+              className="p-5 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+              style={{
+                border: `2px solid ${color}`,
+                boxShadow: `0 6px 18px ${color}22`,
+                background:
+                  "linear-gradient(180deg, rgba(15,23,42,0.7), rgba(15,23,42,0.5))",
+                minHeight: "300px", // ✅ keeps consistent height
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
+              <div>
+                <div className="font-bold text-cyan-200 mb-2">
+                  {u.name}{" "}
+                  <span className="text-sm text-gray-400">({u.code})</span>
+                </div>
+
+                {/* Time Range */}
+                <div className="mb-3">
+                  <label className="text-sm text-gray-300 block mb-1">
+                    Attendance Time Window
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={time.start || ""}
+                      onChange={(e) =>
+                        handleTimeChange(u.code, "start", e.target.value)
+                      }
+                      className="w-1/2 p-2 rounded bg-slate-800 text-white"
+                    />
+                    <span className="text-gray-400">to</span>
+                    <input
+                      type="time"
+                      value={time.end || ""}
+                      onChange={(e) =>
+                        handleTimeChange(u.code, "end", e.target.value)
+                      }
+                      className="w-1/2 p-2 rounded bg-slate-800 text-white"
+                    />
+                  </div>
+                  {errorMsg && (
+                    <p className="text-red-400 text-xs mt-1">{errorMsg}</p>
+                  )}
+                </div>
+
+                {/* Geo Options */}
+                <div className="flex items-center mb-2 gap-2">
+                  <input
+                    type="checkbox"
+                    checked={geo.enabled}
+                    onChange={(e) =>
+                      handleGeoChange(u.code, "enabled", e.target.checked)
+                    }
+                  />
+                  <span className="text-sm text-gray-300">
+                    Enable Geolocation
+                  </span>
+                </div>
+
+                {geo.enabled && (
+                  <div className="space-y-2 mb-3">
+                    <input
+                      type="text"
+                      placeholder="Latitude"
+                      value={geo.lat || ""}
+                      onChange={(e) =>
+                        handleGeoChange(u.code, "lat", e.target.value)
+                      }
+                      className="w-full p-2 rounded bg-slate-800 text-white"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Longitude"
+                      value={geo.lng || ""}
+                      onChange={(e) =>
+                        handleGeoChange(u.code, "lng", e.target.value)
+                      }
+                      className="w-full p-2 rounded bg-slate-800 text-white"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Radius (meters)"
+                      value={geo.radius || ""}
+                      onChange={(e) =>
+                        handleGeoChange(u.code, "radius", e.target.value)
+                      }
+                      className="w-full p-2 rounded bg-slate-800 text-white"
+                    />
+                    <Button
+                      onClick={() => handleUseMyLocation(u.code)}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      Use My Location
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <Button
+                onClick={() => handleSave(u.code)}
+                disabled={!!errorMsg}
+                className={`w-full mt-2 ${
+                  errorMsg
+                    ? "bg-gray-600 cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700"
+                }`}
+              >
+                Save Limits
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
+  function StudentsView() {
+    return (
+      <div className="flex flex-col gap-6">
+        <h2 className="text-2xl font-extrabold text-blue-300">Students</h2>
+        <Card className="p-4">
+          <table style={{ width: "100%", fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", padding: 8 }}>Student ID</th>
+                <th style={{ textAlign: "left", padding: 8 }}>Name</th>
+              </tr>
+            </thead>
+            <tbody>
+              {searchedStudents.map((s) => (
+                <tr key={s.student_id}>
+                  <td style={{ padding: 8 }}>{s.student_id}</td>
+                  <td style={{ padding: 8 }}>{s.name}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      </div>
+    );
   }
-};
-const saveUnitSettings = async () => {
-  if (!unitModalValue) return;
 
-  const enabled = unitEnabled[unitModalValue];
-  const timeLimit = timeLimitMap[unitModalValue];
-
-  try {
-    await fetch(`/api/tutor/units/${unitModalValue}/settings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        slots: null,       // or pass real slots if you want
-        time_limit: timeLimit,
-      }),
-    });
-
-    // also ensure toggle state is saved
-    await fetch(`/api/tutor/units/${unitModalValue}/toggle?enabled=${enabled}`, {
-      method: "POST",
-    });
-
-    setShowUnitModal(false);
-  } catch (err) {
-    console.error("Failed to save unit settings", err);
-    alert("Failed to save settings. Please try again.");
+  function AttendanceView() {
+    return (
+      <div className="flex flex-col gap-6">
+        <h2 className="text-2xl font-extrabold text-blue-300">Attendance</h2>
+        <Card className="p-4">
+          <table style={{ width: "100%", fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Unit</th>
+                <th>Timestamp</th>
+                <th>Tx</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAttendance.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.student_id}</td>
+                  <td>{r.unit}</td>
+                  <td>{r.timestamp}</td>
+                  <td>{r.txid ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      </div>
+    );
   }
-};
 
+  // --------------------- Layout ----------------------
 
-  // small helpers
-  const presentCountForUnit = (u) =>
-    attendance.filter((r) => r.unit === u && r.txid) .length || 0;
+  const sidebarStyle = {
+    width: sidebarOpen ? 260 : 72,
+    transition: "all 0.3s ease",
+    backdropFilter: "blur(14px)",
+    background: "rgba(17, 25, 40, 0.6)",
+    borderRight: "1px solid rgba(255,255,255,0.1)",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+    transform: sidebarOpen ? "translateX(0)" : "translateX(-20%)",
+  };
 
-  // UI rendering
   return (
     <div
-      className="tutor-root"
       style={{
+        display: "flex",
         minHeight: "100vh",
         background: "#0f1724",
         color: "#e6eef8",
-        padding: 28,
-        position: "relative",
-        overflow: "hidden",
         fontFamily: "Inter, sans-serif",
       }}
     >
-      {/* floating circles (re-uses your style.css definitions) */}
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className={`circle circle${i + 1}`} />
-      ))}
+      {/* Circles background */}
+      <div className="circle circle1"></div>
+      <div className="circle circle2"></div>
+      <div className="circle circle3"></div>
+      <div className="circle circle4"></div>
+      <div className="circle circle5"></div>
+      <div className="circle circle6"></div>
 
-      {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: 20, position: "relative", zIndex: 5 }}>
-        <h1
+      {/* Sidebar */}
+<aside style={sidebarStyle}>
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      justifyContent: "space-between",
+      padding: 16,
+    }}
+  >
+    {/* --- Top section with logo and toggle button --- */}
+    <div>
+      {/* Logo */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: sidebarOpen ? "flex-start" : "center",
+          marginBottom: 20,
+        }}
+      >
+        <img
+          src="/src/logo.png"
+          alt="Logo"
           style={{
-            fontFamily: "'Bungee', cursive",
-            fontSize: 36,
-            color: "#60a5fa",
-            textShadow: "0 0 12px #60a5fa, 0 0 24px #2563eb",
-            margin: 0,
-            letterSpacing: 2,
+            height: 100,
+            width: 100,
+            borderRadius: "50%",
+            marginRight: sidebarOpen ? 0 : 0,
+            transition: "all 0.3s ease",
           }}
-        >
-          TUTOR DASHBOARD
-        </h1>
-        <p style={{ color: "#9aa6b6", marginTop: 8 }}>Manage attendance, view students and export records</p>
-
-        <div style={{ marginTop: 16 }}>
-          <Button
-            className="primary-hero"
-            onClick={() => setShowDownloadModal(true)}
-            style={{ padding: "10px 20px", borderRadius: 10 }}
-          >
-            <FiDownload style={{ marginRight: 8 }} /> Download Records
-          </Button>
-        </div>
-      </div>
-
-      {/* Main grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 20, position: "relative", zIndex: 5 }}>
-        {/* Left column (units + settings) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card className="glass-card" style={{ padding: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div>
-                <div style={{ fontWeight: 800, color: "#cfe8ff" }}>Units</div>
-                <div style={{ color: "#9aa6b6", fontSize: 12 }}>Quick toggles</div>
-              </div>
-              <Button variant="ghost" onClick={() => setShowUnitModal(true)} style={{ padding: 8 }}>
-                <FiSettings />
-              </Button>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {units.length === 0 && <div style={{ color: "#9aa6b6" }}>No units found</div>}
-              {units.map((u) => (
-                <div key={u} style={{
-                  padding: 10,
-                  borderRadius: 10,
-                  background: "linear-gradient(180deg, rgba(11,18,32,0.6), rgba(11,18,32,0.4))",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 800, color: "#cfe8ff" }}>{u}</div>
-                    <div style={{ color: "#9aa6b6", fontSize: 12 }}>
-                      {presentCountForUnit(u)} present
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-                    <Button
-                      onClick={() => toggleUnitEnabled(u)}
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: 8,
-                        background: unitEnabled[u] ? "#34d399" : "#ef4444",
-                        color: unitEnabled[u] ? "#04260f" : "#fff",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {unitEnabled[u] ? "ENABLED" : "DISABLED"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => { setUnitModalValue(u); setShowUnitModal(true); }}
-                      style={{ padding: 6, fontSize: 14 }}
-                    >
-                      <FiChevronRight />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card style={{ padding: 12 }}>
-            <div style={{ fontWeight: 800, color: "#60a5fa", marginBottom: 8 }}>Quick Filters</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <Input placeholder="Search student or id..." value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
-
-            <div style={{ marginTop: 10 }}>
-              <label style={{ color: "#9aa6b6", fontSize: 12 }}>Unit</label>
-              <Select value={selectedUnit} onChange={(e) => setSelectedUnit(e.target.value)}>
-                <option value="">All units</option>
-                {units.map((u) => <option key={u} value={u}>{u}</option>)}
-              </Select>
-            </div>
-
-            <div style={{ marginTop: 10 }}>
-              <label style={{ color: "#9aa6b6", fontSize: 12 }}>Date</label>
-              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{
-                width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #233044", background: "#071024", color: "#e6eef8"
-              }} />
-            </div>
-          </Card>
-        </div>
-
-        {/* Right column (table + stats) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", gap: 12 }}>
-            <Card style={{ flex: 1, padding: 12 }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <FiGift className="text-3xl" style={{ color: "#34d399" }} />
-                <div>
-                  <div style={{ color: "#9aa6b6", fontSize: 12 }}>Rewards</div>
-                  <div style={{ fontWeight: 800, fontSize: 18 }}>{stats.rewards}</div>
-                </div>
-              </div>
-            </Card>
-
-            <Card style={{ flex: 1, padding: 12 }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <FiUsers className="text-3xl" style={{ color: "#60a5fa" }} />
-                <div>
-                  <div style={{ color: "#9aa6b6", fontSize: 12 }}>Total Students</div>
-                  <div style={{ fontWeight: 800, fontSize: 18 }}>{stats.total}</div>
-                </div>
-              </div>
-            </Card>
-
-            <Card style={{ flex: 1, padding: 12 }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <FiCheckCircle className="text-3xl" style={{ color: "#a78bfa" }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ color: "#9aa6b6", fontSize: 12 }}>Present</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ fontWeight: 800, fontSize: 18 }}>{stats.present}</div>
-                    <div style={{ flex: 1 }}>
-                      <Progress value={(stats.present / Math.max(stats.total, 1)) * 100} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Table Card */}
-          <Card style={{ padding: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px" }}>
-              <div style={{ fontWeight: 800, color: "#60a5fa" }}>Students Attendance ({filteredAttendance.length})</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <Input placeholder="Filter by name or id..." value={search} onChange={(e) => setSearch(e.target.value)} />
-                <Button onClick={() => { setSearch(""); setSelectedUnit(""); setSelectedDate(""); }} variant="ghost">Reset</Button>
-              </div>
-            </div>
-
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                    <th style={{ textAlign: "left", padding: 12, color: "#60a5fa", fontWeight: 800 }}>Student ID</th>
-                    <th style={{ textAlign: "left", padding: 12, color: "#9aa6b6" }}>Name</th>
-                    <th style={{ textAlign: "left", padding: 12, color: "#9aa6b6" }}>Unit</th>
-                    <th style={{ textAlign: "left", padding: 12, color: "#9aa6b6" }}>Timestamp</th>
-                    <th style={{ textAlign: "left", padding: 12, color: "#9aa6b6" }}>Tx</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr><td colSpan={5} style={{ padding: 18, color: "#9aa6b6" }}>Loading...</td></tr>
-                  ) : error ? (
-                    <tr><td colSpan={5} style={{ padding: 18, color: "#f87171" }}>{error}</td></tr>
-                  ) : filteredAttendance.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: 18, color: "#9aa6b6" }}>No attendance records found for selected filters.</td></tr>
-                  ) : (
-                    // render attendance rows, but compact: group by student via searchedStudents
-                    searchedStudents.flatMap((s) => {
-                      const rows = filteredAttendance.filter(r => r.student_id === s.student_id);
-                      if (!rows.length) return [];
-                      return rows.map((r, i) => (
-                        <tr key={`${s.student_id}-${i}`} className="hover-row" style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: 10, color: "#e6eef8" }}>{s.student_id}</td>
-                          <td style={{ padding: 10, color: "#e6eef8" }}>{s.name}</td>
-                          <td style={{ padding: 10, color: "#9aa6b6" }}>{r.unit}</td>
-                          <td style={{ padding: 10, color: "#9aa6b6" }}>{r.timestamp}</td>
-                          <td style={{ padding: 10, color: r.txid ? "#34d399" : "#9aa6b6" }}>{r.txid ?? "-"}</td>
-                        </tr>
-                      ));
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Unit Settings Modal */}
-      {showUnitModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-          }}
-          onClick={() => setShowUnitModal(false)} // close when clicking outside
-        >
-          <div
+        />
+        {sidebarOpen && (
+          <span
             style={{
-              background: "#0f1724",
-              borderRadius: 12,
-              padding: 20,
-              minWidth: 400,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-              animation: "fadeIn 0.3s ease",
+              fontWeight: 700,
+              fontSize: "1.1rem",
+              color: "#7dd3fc",
+              transition: "opacity 0.3s ease",
             }}
-            onClick={(e) => e.stopPropagation()} // prevent close when clicking inside
           >
-            <h2 style={{ marginBottom: 12, color: "#60a5fa" }}>
-              Unit Attendance Settings
-            </h2>
-
+            Tutor Dashboard
+          </span>
+        )}
+      </div>
+      {/* Profile Section */}
             <div
+              style={{
+                display: "flex",
+                flexDirection: sidebarOpen ? "row" : "column",
+                alignItems: "center",
+                justifyContent: sidebarOpen ? "flex-start" : "center",
+                gap: sidebarOpen ? 12 : 6,
+                marginBottom: 24,
+                transition: "all 0.3s ease",
+              }}
+            >
+              <img
+                src="/src/profile.jpeg" 
+                alt="Profile"
                 style={{
-                  maxHeight: "400px",   // limit popup body height
-                  overflowY: "auto",    // enable vertical scroll
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 12,
-                  paddingRight: 6,      // small gap so scrollbar doesn’t overlap content
+                  width: 60,
+                  height: 60,
+                  borderRadius: "50%",
+                  border: "2px solid #38bdf8",
+                  objectFit: "cover",
+                  boxShadow: "0 0 10px rgba(56, 189, 248, 0.5)",
                 }}
-              >
-                {units.length === 0 && (
-                  <div style={{ color: "#9aa6b6" }}>No units found</div>
-                )}
-
-                {units.map((u) => (
-                  <div
-                    key={u}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "8px 12px",
-                      borderRadius: 8,
-                      background: "rgba(17, 24, 39, 0.6)",
-                    }}
-                  >
-                    <div style={{ color: "#cfe8ff", fontWeight: 700 }}>{u}</div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <Button
-                        onClick={() => toggleUnitEnabled(u)}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: 6,
-                          background: unitEnabled[u] ? "#34d399" : "#ef4444",
-                          color: unitEnabled[u] ? "#04260f" : "#fff",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {unitEnabled[u] ? "ENABLED" : "DISABLED"}
-                      </Button>
-
-                      <Input
-                        type="time"
-                        value={timeLimitMap[u] ?? ""}
-                        onChange={(e) =>
-                          setTimeLimitMap((prev) => ({ ...prev, [u]: e.target.value }))
-                        }
-                        style={{ width: 120 }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-
-            <label style={{ color: "#9aa6b6", fontSize: 12, marginTop: 10 }}>
-              Enable Attendance
-            </label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <Button
-                onClick={() => unitModalValue && toggleUnitEnabled(unitModalValue)}
-                style={{ flex: 1 }}
-              >
-                {unitModalValue
-                  ? unitEnabled[unitModalValue]
-                    ? "Disable"
-                    : "Enable"
-                  : "Select unit"}
-              </Button>
-              <Input
-                type="time"
-                value={timeLimitMap[unitModalValue] ?? ""}
-                onChange={(e) =>
-                  setTimeLimitMap((prev) => ({
-                    ...prev,
-                    [unitModalValue]: e.target.value,
-                  }))
-                }
-                style={{ width: 120 }}
               />
+
+              {sidebarOpen && (
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span className="text-white font-semibold text-sm">Dr Winnie Kamau</span>
+                  <span className="text-gray-400 text-xs">Tutor</span>
+                </div>
+              )}
             </div>
 
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <Button
-                onClick={() => setShowUnitModal(false)}
-                variant="ghost"
-                style={{ flex: 1 }}
-              >
-                Cancel
-              </Button>
-              <Button onClick={saveUnitSettings} style={{ flex: 1 }}>
-                Save
-              </Button>
-            </div>
-          </div>
-        </div>
+
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "#22d3ee", // neon cyan
+          fontSize: "1.5rem",
+          marginBottom: "10px",
+          padding: "8px",
+          borderRadius: "10px",
+          boxShadow: "0 0 8px rgba(34,211,238,0.5)",
+          cursor: "pointer",
+          transition: "all 0.3s ease",
+          textShadow: "0 0 6px rgba(34,211,238,0.7)",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = "0 0 15px rgba(34,211,238,0.8)";
+          e.currentTarget.style.textShadow =
+            "0 0 12px rgba(34,211,238,0.9), 0 0 20px rgba(34,211,238,0.7)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = "0 0 8px rgba(34,211,238,0.5)";
+          e.currentTarget.style.textShadow = "0 0 6px rgba(34,211,238,0.7)";
+        }}
+      >
+        {sidebarOpen ? <FiChevronLeft /> : <FiMenu />}
+      </button>
+
+      {/* Navigation */}
+      <nav
+  
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    transition: "opacity 0.3s",
+  }}
+>
+  {[
+    { id: "units", icon: <FiBook />, label: "Units" },
+    { id: "limits", icon: <FiClock />, label: "Limits" },
+    { id: "students", icon: <FiUsers />, label: "Students" },
+    { id: "attendance", icon: <FiCalendar />, label: "Attendance" },
+    { id: "rewards", icon: <FiGift />, label: "Rewards" },
+  ].map(({ id, icon, label }) => (
+    <button
+      key={id}
+      onClick={() => setActiveTab(id)}
+      className={`flex items-center gap-3 p-3 rounded-lg w-full text-left transition-all duration-300 ${
+        activeTab === id ? "text-cyan-400" : "text-slate-200"
+      }`}
+      style={{
+        background: "transparent",
+        border: "none",
+        boxShadow:
+          activeTab === id
+            ? "0 0 10px rgba(34,211,238,0.8)"
+            : "0 0 0 rgba(0,0,0,0)",
+        textShadow:
+          activeTab === id
+            ? "0 0 8px rgba(34,211,238,0.8)"
+            : "0 0 4px rgba(148,163,184,0.4)",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.textShadow =
+          "0 0 8px rgba(34,211,238,0.8), 0 0 15px rgba(34,211,238,0.6)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.textShadow =
+          activeTab === id
+            ? "0 0 8px rgba(34,211,238,0.8)"
+            : "0 0 4px rgba(148,163,184,0.4)";
+      }}
+    >
+      {icon}
+      {sidebarOpen && (
+        <span
+          className={`font-semibold ${
+            activeTab === id ? "text-cyan-400" : "text-slate-300"
+          }`}
+        >
+          {label}
+        </span>
       )}
+    </button>
+  ))}
+</nav>
 
+    </div>
 
-      {/* Download Modal */}
-      {showDownloadModal && (
-        <Dialog onClose={() => setShowDownloadModal(false)} title="Download Attendance Records">
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <label style={{ color: "#9aa6b6", fontSize: 12 }}>Unit</label>
-            <Select value={downloadUnit} onChange={(e) => setDownloadUnit(e.target.value)}>
-              <option value="">-- All units --</option>
-              {units.map(u => <option key={u} value={u}>{u}</option>)}
-            </Select>
+    {/* --- Footer section --- */}
+    <div
+      style={{
+        fontSize: "12px",
+        color: "#9ca3af",
+        textAlign: sidebarOpen ? "left" : "center",
+        paddingTop: 10,
+        borderTop: "1px solid rgba(255,255,255,0.1)",
+      }}
+    >
+      © {new Date().getFullYear()} FaceTally
+    </div>
+  </div>
+</aside>
 
-            <label style={{ color: "#9aa6b6", fontSize: 12 }}>Date</label>
-            <input type="date" value={downloadDate} onChange={(e) => setDownloadDate(e.target.value)} style={{
-              width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #233044", background: "#071024", color: "#e6eef8"
-            }} />
+      {/* Main Content */}
+      <main style={{ flex: 1, padding: "32px" }}>
+        {activeTab === "units" && <UnitsView />}
+        {activeTab === "limits" && <LimitsView />}
+        {activeTab === "students" && <StudentsView />}
+        {activeTab === "attendance" && <AttendanceView />}
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <Button onClick={() => setShowDownloadModal(false)} variant="ghost" style={{ flex: 1 }}>Cancel</Button>
-              <Button onClick={handleDownloadModal} style={{ flex: 1 }}>Download</Button>
-            </div>
-          </div>
-        </Dialog>
-      )}
+      </main>
     </div>
   );
 }
