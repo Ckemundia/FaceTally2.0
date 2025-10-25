@@ -116,30 +116,30 @@ Backend (FastAPI + Uvicorn)	uvicorn main:app --reload	http://127.0.0.1:8000
     Browser: Chrome / Edge (latest)
 
 🧱 Architecture Diagram
-     [Face Detection + Attendance Capture]
-                       │
-                       ▼
-┌────────────────────────────────────────────┐
-│ React Frontend (Vite)                      │
-│ - Face Recognition (face-api.js)           │
-│ - Token Game Interface                     │
-└─────────────────┬──────────────────────────┘
-                  │   (REST API via Axios)
-                  ▼
-┌────────────────────────────────────────────┐
-│ FastAPI Backend                            │
-│ - Auth / Attendance Processing             │
-│ - Wallet Validation                        │
-│ - Hedera SDK Integration                   │
-└─────────────────┬──────────────────────────┘
-                  │   (HCS Logs / HTS Minting)
-                  ▼
-┌────────────────────────────────────────────┐
-│ Hedera Network (Testnet)                   │
-│ - HTS: POP Token Rewards (0.0.6879369)     │
-│ - HCS: Attendance Logs                     │
-│ - Mirror Node: Data Verification           │
-└────────────────────────────────────────────┘
+                                 [Face Detection + Attendance Capture]
+                                                   │
+                                                   ▼
+                            ┌────────────────────────────────────────────┐
+                            │ React Frontend (Vite)                      │
+                            │ - Face Recognition (face-api.js)           │
+                            │ - Token Game Interface                     │
+                            └─────────────────┬──────────────────────────┘
+                                              │   (REST API via Axios)
+                                              ▼
+                            ┌────────────────────────────────────────────┐
+                            │ FastAPI Backend                            │
+                            │ - Auth / Attendance Processing             │
+                            │ - Wallet Validation                        │
+                            │ - Hedera SDK Integration                   │
+                            └─────────────────┬──────────────────────────┘
+                                              │   (HCS Logs / HTS Minting)
+                                              ▼
+                            ┌────────────────────────────────────────────┐
+                            │ Hedera Network (Testnet)                   │
+                            │ - HTS: POP Token Rewards (0.0.6879369)     │
+                            │ - HCS: Attendance Logs                     │
+                            │ - Mirror Node: Data Verification           │
+                            └────────────────────────────────────────────┘
 
 🧩 Deployed Hedera IDs
     Service            	Description    	    Testnet ID
