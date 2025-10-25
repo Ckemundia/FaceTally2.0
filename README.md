@@ -148,7 +148,7 @@ Backend (FastAPI + Uvicorn)	uvicorn main:app --reload	http://127.0.0.1:8000
 
     Token	FaceTally     POP Token            	0.0.6879369
     Topic	Attendance    Log Topic	            0.0.xxxxxx
-    Operator Account	  Backend Wallet	      0.0.xxxxxx
+    Operator Account	  Backend Wallet	    0.0.6853808
 
 🔒 Security & Secrets
   No private keys or credentials are committed.
