@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 
+// Canvas Dimensions 
+const GAME_WIDTH = 900;  
+const GAME_HEIGHT = 600; 
+
 const ASSET_BASE = "/assets";
 const ASSET_OBJECTS = {
   logo: `${ASSET_BASE}/fallingobjects/logo.png`,
@@ -53,7 +57,7 @@ export default function FacetallyCatchGame() {
   const imagesRef = useRef({});
   const soundsRef = useRef({});
 
-  // ✅ LOAD IMAGES + SOUNDS (safe version with loading overlay)
+  //LOAD IMAGES + SOUNDS (safe version with loading overlay)
   useEffect(() => {
     const imgs = {};
     const toLoad = { ...ASSET_OBJECTS, basket: ASSET_BASKET };
@@ -92,11 +96,11 @@ export default function FacetallyCatchGame() {
   }, []);
 
   // Resize Canvas
-  useEffect(() => {
+useEffect(() => {
     const canvas = canvasRef.current;
     const resize = () => {
-      const w = Math.min(window.innerWidth * 0.66, 1000);
-      const h = Math.max(420, window.innerHeight * 0.6);
+      const w = GAME_WIDTH;
+      const h = GAME_HEIGHT;
       stateRef.current.width = w;
       stateRef.current.height = h;
       canvas.width = w * devicePixelRatio;
@@ -111,7 +115,7 @@ export default function FacetallyCatchGame() {
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, []);
-  // 🎮 Handle keyboard and mouse movement
+  
 // 🎮 Handle keyboard and mouse movement (with spacebar pause)
 useEffect(() => {
   const s = stateRef.current;
@@ -120,7 +124,7 @@ useEffect(() => {
     if (e.key === "ArrowLeft" || e.key === "a") s.keys.left = true;
     if (e.key === "ArrowRight" || e.key === "d") s.keys.right = true;
 
-    // 🕹️ Spacebar toggles pause
+    //  Spacebar toggles pause
     if (e.code === "Space") {
       e.preventDefault(); // stop page scroll
       setPaused((p) => !p);
@@ -157,7 +161,7 @@ useEffect(() => {
       a.play().catch(() => {});
     }
   };
-  // 🎵 Control background music
+  //  Control background music
   const controlBGMusic = (play) => {
     const bg = soundsRef.current.bg;
     if (!bg) return;
@@ -166,7 +170,7 @@ useEffect(() => {
       bg.loop = true;
       bg.volume = 0.4;
       bg.currentTime = 0;
-      bg.play().catch(() => {}); // autoplay-safe
+      bg.play().catch(() => {});
     } else {
       bg.pause();
       bg.currentTime = 0;
@@ -178,7 +182,7 @@ useEffect(() => {
   const roll = Math.random();
   let type = "logo";
 
-  // 🎯 Increase bomb frequency and variety
+  // Increase bomb frequency and variety
   if (roll < 0.4) type = "logo";
   else if (roll < 0.6) type = "fakelogo";
   else if (roll < 0.75) type = "rock1";
@@ -228,8 +232,8 @@ useEffect(() => {
         tryPlay("hit");
         break;
       case "bomb":
-        tryPlay("lose"); // 💣 use lose sound
-        controlBGMusic(false); // ✅ stop background music
+        tryPlay("lose"); 
+        controlBGMusic(false); 
         setMessage("💣 Boom! Game Over");
         setTimeout(() => {
           setGameOver(true);
@@ -270,12 +274,12 @@ useEffect(() => {
         setTimeLeft(t => {
           if (t <= 1) {
         setRunning(false);
-        controlBGMusic(false); // ✅ stop music when winning
+        controlBGMusic(false); 
         setTimeout(() => {
           setGameOver(true);
           setMessage("🏆 You Survived!");
           tryPlay("victory");
-          triggerConfetti(); // 🎉 call the confetti function
+          triggerConfetti();
         }, 200);
         return 0;
         }
@@ -484,7 +488,7 @@ const overlayInner = {
   animation: "fadeIn 0.8s ease forwards",
 };
 
- // ✅ UI + Overlays
+ // UI + Overlays
 return (
   <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden" }}>
   {/* ✨ Floating Background Circles (move to background layer) */}
@@ -517,42 +521,43 @@ return (
         <div>Best: {best}</div>
       </div>
 
-      {/* CENTER CANVAS AREA */}
-      <div
-        style={{
-          flex: 1,
-          position: "relative",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        {/* 🎨 GLASSY CANVAS CONTAINER */}
-        <div
-          style={{
-            ...glassPanel,
-            width: "100%",
-            height: "100%",
-            maxWidth: 950,
-            minHeight: 500,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            borderRadius: 20,
-            boxShadow: "0 0 35px rgba(0,0,0,0.4)",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          <canvas
-            ref={canvasRef}
-            style={{
-              borderRadius: 20,
-              width: "100%",
-              height: "100%",
-              background: "transparent", 
-            }}
-/>
+      {/* 🎮 CENTER CANVAS AREA */}
+<div
+  style={{
+    flex: 1,
+    position: "relative",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2, 
+  }}
+>
+  {/* 🌫️ Glassy Canvas Container */}
+  <div
+    style={{
+      ...glassPanel,
+      width: `${GAME_WIDTH}px`,
+      height: `${GAME_HEIGHT}px`,
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      borderRadius: 20,
+      boxShadow: "0 0 35px rgba(0,0,0,0.4)",
+      position: "relative",
+      overflow: "hidden",
+      backdropFilter: "blur(12px)",
+      background: "rgba(255, 255, 255, 0.03)",
+    }}
+  >
+    <canvas
+      ref={canvasRef}
+      style={{
+        borderRadius: 20,
+        background: "transparent",
+        width: "100%",
+        height: "100%",
+      }}
+    />
 
           {/* Loading Overlay */}
           {!assetsLoaded && (
