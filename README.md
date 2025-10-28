@@ -147,7 +147,7 @@ Backend (FastAPI + Uvicorn)	uvicorn main:app --reload	http://127.0.0.1:8000
     Service            	Description    	    Testnet ID
 
     Token	FaceTally     POP Token            	0.0.6879369
-    Topic	Attendance    Log Topic	            0.0.xxxxxx
+    Topic	Attendance    Log Topic	            0.0.6922157
     Operator Account	  Backend Wallet	    0.0.6853808
 
 🔒 Security & Secrets
