@@ -86,17 +86,18 @@ def init_db():
         # Unit settings table (NEW)
         cur.execute(
             """
-        CREATE TABLE IF NOT EXISTS unit_settings (
-            unit_code TEXT PRIMARY KEY,
-            is_active INTEGER NOT NULL DEFAULT 1,
-            attendance_limit INTEGER,
-            time_limit TEXT,
-            FOREIGN KEY(unit_code) REFERENCES units(unit_code)
+            CREATE TABLE IF NOT EXISTS unit_settings (
+                unit_code TEXT PRIMARY KEY,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                attendance_limit INTEGER,
+                time_limit TEXT,
+                location_lat REAL,
+                location_lng REAL,
+                location_radius REAL,
+                FOREIGN KEY(unit_code) REFERENCES units(unit_code)
+            )
+            """
         )
-        """
-        )
-
-        conn.commit()
 
         # --- Prepopulate units ---
         default_units = [
