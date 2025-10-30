@@ -76,7 +76,15 @@ The **Mirror Node API** is used for **wallet validation** and **on-chain data ve
             return {"valid": False}
            except Exception as e:
             return {"valid": False, "error": str(e)}
+**Economic Justification**
 
+Free, read-only access: Mirror Nodes do not incur HBAR fees, making them cost-free for wallet validation and attendance verification.
+
+Reliable verification before token distribution: Ensures that only valid accounts receive POP tokens, preventing errors or token loss.
+
+High throughput & low latency: Can handle many queries per second, supporting scalable, real-time operations for schools and universities.
+
+Audit-friendly: Provides historical ledger data, enabling traceable and verifiable token distribution and attendance logs without extra infrastructure costs.
 
 ⚙️ Deployment & Setup Instructions
 
@@ -118,30 +126,31 @@ Backend (FastAPI + Uvicorn)	uvicorn main:app --reload	http://127.0.0.1:8000
 ### 🧱 Architecture Diagram
 
     
-         [Face Detection + Attendance Capture]
+                [Face Detection + Attendance Capture]
                            │
                            ▼
     ┌────────────────────────────────────────────┐
     │ React Frontend (Vite)                      │
     │ - Face Recognition (face-api.js)           │
     │ - Token Game Interface                     │
-    └─────────────────┬──────────────────────────┘
-                      │   (REST API via Axios)
-                      ▼
+    └───────────────┬────────────────────────────┘
+                    │ (REST API via Axios)
+                    ▼
     ┌────────────────────────────────────────────┐
     │ FastAPI Backend                            │
     │ - Auth / Attendance Processing             │
     │ - Wallet Validation                        │
     │ - Hedera SDK Integration                   │
-    └─────────────────┬──────────────────────────┘
-                      │   (HCS Logs / HTS Minting)
-                      ▼
+    └───────────────┬────────────────────────────┘
+                    │ (HCS Logs / HTS Minting / Mirror Node Validation)
+                    ▼
     ┌────────────────────────────────────────────┐
     │ Hedera Network (Testnet)                   │
-    │ - HTS: POP Token Rewards (0.0.6879369)     │
-    │ - HCS: Attendance Logs                     │
-    │ - Mirror Node: Data Verification           │
+    │ - HTS: POP Token Rewards (0.0.6879369)    │
+    │ - HCS: Attendance Logs (0.0.6922157)      │
+    │ - Mirror Node: Wallet & Data Verification │
     └────────────────────────────────────────────┘
+
 
 🧩 Deployed Hedera IDs
     Service            	Description    	    Testnet ID
@@ -181,3 +190,8 @@ Support for multi-campus and corporate training systems
 
 📜 **License**
 This project is licensed under the [MIT License](./LICENSE).
+## 🏆 Hackathon Resources / Demo
+- **Live Demo:** [Try FaceTally on Testnet](https://your-demo-link.com)
+- **Pitch Deck:** [view pitchdeck](https://link-to-pitchdeck.com)
+- **Hedera Certification:** [View Certificate](https://link-to-certificate.com)
+
