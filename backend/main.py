@@ -2,9 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from db import init_db
 from routes import register, match, attendance, units, token, reward
-from routes import unit_settings, tutor,users
+from routes import unit_settings, tutor, users
 from routes import hcs
 from routes import wallet
+from routes import unit_settings
 
 
 app = FastAPI(title="FRAS Backend")
@@ -23,9 +24,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.on_event("startup")
 def startup_event():
     init_db()
+
 
 # Register routes
 app.include_router(register.router, prefix="/api")

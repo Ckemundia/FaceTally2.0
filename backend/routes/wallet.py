@@ -4,6 +4,7 @@ import requests
 
 router = APIRouter()
 
+
 @router.get("/validate_wallet")
 def validate_wallet(wallet: str = Query(...)):
     try:

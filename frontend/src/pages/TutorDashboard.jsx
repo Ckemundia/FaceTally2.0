@@ -36,7 +36,7 @@ export default function TutorDashboard() {
   const [search, setSearch] = useState("");
 
   const [unitEnabled, setUnitEnabled] = useState({});
-  
+
 
   const [showUnitModal, setShowUnitModal] = useState(false);
   const [unitModalValue, setUnitModalValue] = useState("");
@@ -50,7 +50,66 @@ export default function TutorDashboard() {
   const [timeLimitMap, setTimeLimitMap] = useState({});
   const [geoLimitMap, setGeoLimitMap] = useState({});
 
-  // --- Data fetching unchanged ---
+  const [activeLimits, setActiveLimits] = useState({});
+  const [savingMap, setSavingMap] = useState({});
+
+
+
+  useEffect(() => {
+    if (allUnits.length > 0) {
+      loadLimits();
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allUnits.length]);
+
+  // Keep the function clean (NO hooks inside)
+  const loadLimits = async () => {
+    if (!allUnits.length) return;
+    try {
+      const newTimeMap = {};
+      const newGeoMap = {};
+      const newActive = {};
+
+      for (const u of allUnits) {
+        const res = await fetch(`/api/unit/status/${u.code}`);
+        if (!res.ok) continue;
+        const data = await res.json();
+
+        newTimeMap[u.code] = data.time_limit
+          ? {
+            start: data.time_limit.split("-")[0],
+            end: data.time_limit.split("-")[1],
+          }
+          : { start: "", end: "" };
+
+        newGeoMap[u.code] = {
+          enabled: !!data.location_lat,
+          lat: data.location_lat || "",
+          lng: data.location_lng || "",
+          radius: data.location_radius || "",
+        };
+
+        if (data.time_limit || data.location_radius) {
+          newActive[u.code] = {
+            time_limit: data.time_limit,
+            location_radius: data.location_radius || null,
+          };
+        }
+      }
+
+      // update state here 
+      setTimeLimitMap(newTimeMap);
+      setGeoLimitMap(newGeoMap);
+      setActiveLimits(newActive);
+    } catch (err) {
+      console.error("❌ Failed to fetch limits:", err);
+    }
+  };
+
+
+
+  // --- Data fetching ---
   useEffect(() => {
     let mounted = true;
     async function fetchAll() {
@@ -117,7 +176,7 @@ export default function TutorDashboard() {
   }, []);
 
   // --- Derived and filtered data ---
-    const units = useMemo(() => {
+  const units = useMemo(() => {
     const map = new Map();
     allUnits.forEach((u) => map.set(u.code, u));
     attendance.forEach((r) => {
@@ -176,323 +235,449 @@ export default function TutorDashboard() {
   // --------------------- Render Views ----------------------
 
   function UnitsView() {
-  return (
-    <div style={{ width: "100%", padding: "20px" }}>
-      <h2 className="text-2xl font-extrabold text-blue-300 mb-6">Units</h2>
+    return (
+      <div style={{ width: "100%", padding: "20px" }}>
+        <h2 className="text-2xl font-extrabold text-blue-300 mb-6">Units</h2>
 
-      {/* Responsive grid with equal height cards */}
-      <div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-          gap: "24px",
-        }}
-      >
-        {units.map((u, idx) => {
-          const color = borderColors[idx % borderColors.length];
-          return (
-            <div
-              key={u}
-              className="transition-all duration-300 transform hover:-translate-y-2 hover:shadow-[0_8px_30px_rgba(59,130,246,0.3)]"
-              style={{
-                border: `2px solid ${color}`,
-                boxShadow: `0 4px 16px ${color}22`,
-                background:
-                  "linear-gradient(180deg, rgba(11,18,32,0.65), rgba(11,18,32,0.4))",
-                borderRadius: "14px",
-                padding: "16px",
-                backdropFilter: "blur(5px)",
-                color: "#e6eef8",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                minHeight: "160px", 
-                transition: "all 0.3s ease",
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 700,
-                    color: "#7dd3fc",
-                  }}
-                >
-                  {u.name}
-                </div>
-                <div style={{ fontSize: "13px", color: "#a5b4fc" }}>
-                  {u.code}
-                </div>
-                <div style={{ fontSize: "14px", color: "#94a3b8" }}>
-                  {presentCountForUnit(u)} present
-                </div>
-              </div>
-
-              <Button
-                onClick={() => {
-                  setSelectedUnit(u);
-                  setActiveTab("attendance");
-                }}
+        {/* Responsive grid with equal height cards */}
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+            gap: "24px",
+          }}
+        >
+          {units.map((u, idx) => {
+            const color = borderColors[idx % borderColors.length];
+            return (
+              <div
+                key={u}
+                className="transition-all duration-300 transform hover:-translate-y-2 hover:shadow-[0_8px_30px_rgba(59,130,246,0.3)]"
                 style={{
-                  marginTop: "12px",
-                  padding: "8px 10px",
-                  borderRadius: "8px",
-                  backgroundColor: "#2563eb",
-                  color: "#fff",
+                  border: `2px solid ${color}`,
+                  boxShadow: `0 4px 16px ${color}22`,
+                  background:
+                    "linear-gradient(180deg, rgba(11,18,32,0.65), rgba(11,18,32,0.4))",
+                  borderRadius: "14px",
+                  padding: "16px",
+                  backdropFilter: "blur(5px)",
+                  color: "#e6eef8",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  minHeight: "160px",
                   transition: "all 0.3s ease",
-                  boxShadow: "0 0 0 rgba(59,130,246,0)",
                 }}
-                onMouseEnter={(e) =>
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: 700,
+                      color: "#7dd3fc",
+                    }}
+                  >
+                    {u.name}
+                  </div>
+                  <div style={{ fontSize: "13px", color: "#a5b4fc" }}>
+                    {u.code}
+                  </div>
+                  <div style={{ fontSize: "14px", color: "#94a3b8" }}>
+                    {presentCountForUnit(u)} present
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setSelectedUnit(u);
+                    setActiveTab("attendance");
+                  }}
+                  style={{
+                    marginTop: "12px",
+                    padding: "8px 10px",
+                    borderRadius: "8px",
+                    backgroundColor: "#2563eb",
+                    color: "#fff",
+                    transition: "all 0.3s ease",
+                    boxShadow: "0 0 0 rgba(59,130,246,0)",
+                  }}
+                  onMouseEnter={(e) =>
                   (e.currentTarget.style.boxShadow =
                     "0 0 15px rgba(59,130,246,0.6)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.boxShadow = "0 0 0 rgba(59,130,246,0)")
-                }
-              >
-                View Attendance
-              </Button>
-            </div>
-          );
-        })}
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.boxShadow = "0 0 0 rgba(59,130,246,0)")
+                  }
+                >
+                  View Attendance
+                </Button>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-function LimitsView() {
-  const [localLimits, setLocalLimits] = useState({});
-  const [errors, setErrors] = useState({});
+  function LimitsView() {
+    const [localLimits, setLocalLimits] = useState({});
+    const [errors, setErrors] = useState({});
 
-  useEffect(() => {
-    const init = {};
-    units.forEach((u) => {
-      init[u.code] = {
-        timeLimit: timeLimitMap[u.code] || { start: "", end: "" },
-        geo: geoLimitMap[u.code] || {
-          enabled: false,
-          lat: "",
-          lng: "",
-          radius: "",
-        },
-      };
-    });
-    setLocalLimits(init);
-  }, [units, timeLimitMap, geoLimitMap]);
+    useEffect(() => {
+      const init = {};
+      units.forEach((u) => {
+        init[u.code] = {
+          timeLimit: timeLimitMap[u.code] || { start: "", end: "" },
+          geo: geoLimitMap[u.code] || {
+            enabled: false,
+            lat: "",
+            lng: "",
+            radius: "",
+          },
+        };
+      });
+      setLocalLimits(init);
+    }, [units, timeLimitMap, geoLimitMap]);
 
-  const handleTimeChange = (unitCode, field, value) => {
-    setLocalLimits((prev) => {
-      const updated = {
+
+
+
+    const handleTimeChange = (unitCode, field, value) => {
+      setLocalLimits((prev) => {
+        const updated = {
+          ...prev,
+          [unitCode]: {
+            ...prev[unitCode],
+            timeLimit: { ...prev[unitCode].timeLimit, [field]: value },
+          },
+        };
+
+        const { start, end } = updated[unitCode].timeLimit;
+        if (start && end && start >= end) {
+          setErrors((e) => ({
+            ...e,
+            [unitCode]: "End time must be after start time",
+          }));
+        } else {
+          setErrors((e) => {
+            const copy = { ...e };
+            delete copy[unitCode];
+            return copy;
+          });
+        }
+
+        return updated;
+      });
+    };
+
+    const handleGeoChange = (unitCode, field, value) => {
+      setLocalLimits((prev) => ({
         ...prev,
         [unitCode]: {
           ...prev[unitCode],
-          timeLimit: { ...prev[unitCode].timeLimit, [field]: value },
+          geo: { ...prev[unitCode].geo, [field]: value },
         },
+      }));
+    };
+
+    const handleUseMyLocation = (unitCode) => {
+      if (!navigator.geolocation) {
+        alert("Geolocation not supported in this browser.");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          handleGeoChange(unitCode, "lat", latitude.toFixed(6));
+          handleGeoChange(unitCode, "lng", longitude.toFixed(6));
+        },
+        (err) => alert("Failed to get location: " + err.message)
+      );
+    };
+
+    const handleSave = async (unitCode) => {
+      const { timeLimit, geo } = localLimits[unitCode];
+
+      const timeLimitString =
+        timeLimit.start && timeLimit.end
+          ? `${timeLimit.start}-${timeLimit.end}`
+          : null;
+
+      const payload = {
+        unit_code: unitCode,
+        is_active: true,
+        attendance_limit: null,
+        time_limit: timeLimitString,
+        location_lat: geo.enabled ? parseFloat(geo.lat) || null : null,
+        location_lng: geo.enabled ? parseFloat(geo.lng) || null : null,
+        location_radius: geo.enabled ? parseFloat(geo.radius) || null : null,
       };
 
-      const { start, end } = updated[unitCode].timeLimit;
-      if (start && end && start >= end) {
-        setErrors((e) => ({
-          ...e,
-          [unitCode]: "End time must be after start time",
-        }));
-      } else {
-        setErrors((e) => {
-          const copy = { ...e };
-          delete copy[unitCode];
-          return copy;
+      try {
+        const res = await fetch("/api/unit/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        // ✅ save active state locally to morph card
+        setActiveLimits((prev) => ({
+          ...prev,
+          [unitCode]: {
+            time_limit: timeLimitString,
+            location_radius: geo.enabled ? geo.radius : null,
+          },
+        }));
+      } catch (err) {
+        console.error(err);
+        alert("Failed to save settings. Check console for details.");
       }
-
-      return updated;
-    });
-  };
-
-  const handleGeoChange = (unitCode, field, value) => {
-    setLocalLimits((prev) => ({
-      ...prev,
-      [unitCode]: {
-        ...prev[unitCode],
-        geo: { ...prev[unitCode].geo, [field]: value },
-      },
-    }));
-  };
-
-  const handleUseMyLocation = (unitCode) => {
-    if (!navigator.geolocation) {
-      alert("Geolocation not supported in this browser.");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        handleGeoChange(unitCode, "lat", latitude.toFixed(6));
-        handleGeoChange(unitCode, "lng", longitude.toFixed(6));
-      },
-      (err) => alert("Failed to get location: " + err.message)
-    );
-  };
-
-  const handleSave = async (unitCode) => {
-    const { timeLimit, geo } = localLimits[unitCode];
-    setTimeLimitMap((p) => ({ ...p, [unitCode]: timeLimit }));
-    setGeoLimitMap((p) => ({ ...p, [unitCode]: geo }));
-
-    try {
-      await fetch(`/api/tutor/units/${unitCode}/limits`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timeLimit, geo }),
+    };
+    const handleCancel = async (unitCode) => {
+      // 1. Instant UI update (optimistic)
+      setActiveLimits((prev) => {
+        const copy = { ...prev };
+        delete copy[unitCode];
+        return copy;
       });
-      alert(`Saved limits for ${unitCode}`);
-    } catch {
-      alert("Failed to save limits.");
-    }
-  };
 
-  return (
-    <div className="flex flex-col gap-6 w-full">
-      <h2 className="text-2xl font-extrabold text-blue-300">Attendance Limits</h2>
+      setTimeLimitMap((prev) => ({
+        ...prev,
+        [unitCode]: { start: "", end: "" },
+      }));
 
-      {/* ✅ Proper grid layout */}
-      <div
-        className="grid gap-6 w-full"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          alignItems: "start",
-          gap: "24px",
-        }}
-      >
-        {units.map((u, idx) => {
-          const color = borderColors[idx % borderColors.length];
-          const data = localLimits[u.code] || {};
-          const time = data.timeLimit || {};
-          const geo = data.geo || {};
-          const errorMsg = errors[u.code];
+      setGeoLimitMap((prev) => ({
+        ...prev,
+        [unitCode]: { enabled: false, lat: "", lng: "", radius: "" },
+      }));
 
-          return (
-            <div
-              key={u.code}
-              className="p-5 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-              style={{
-                border: `2px solid ${color}`,
-                boxShadow: `0 6px 18px ${color}22`,
-                background:
-                  "linear-gradient(180deg, rgba(15,23,42,0.7), rgba(15,23,42,0.5))",
-                minHeight: "300px", // ✅ keeps consistent height
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-              }}
-            >
-              <div>
-                <div className="font-bold text-cyan-200 mb-2">
-                  {u.name}{" "}
-                  <span className="text-sm text-gray-400">({u.code})</span>
-                </div>
+      // 🌀 2. Mark as "loading" for visual feedback (optional spinner or fade)
+      setSavingMap((prev) => ({ ...prev, [unitCode]: true }));
 
-                {/* Time Range */}
-                <div className="mb-3">
-                  <label className="text-sm text-gray-300 block mb-1">
-                    Attendance Time Window
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="time"
-                      value={time.start || ""}
-                      onChange={(e) =>
-                        handleTimeChange(u.code, "start", e.target.value)
-                      }
-                      className="w-1/2 p-2 rounded bg-slate-800 text-white"
-                    />
-                    <span className="text-gray-400">to</span>
-                    <input
-                      type="time"
-                      value={time.end || ""}
-                      onChange={(e) =>
-                        handleTimeChange(u.code, "end", e.target.value)
-                      }
-                      className="w-1/2 p-2 rounded bg-slate-800 text-white"
-                    />
+      try {
+        const payload = {
+          unit_code: unitCode,
+          is_active: false,
+          attendance_limit: null,
+          time_limit: null,
+          location_lat: null,
+          location_lng: null,
+          location_radius: null,
+        };
+
+        const res = await fetch("/api/unit/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        // Success – remove the spinner
+        setSavingMap((prev) => ({ ...prev, [unitCode]: false }));
+        await loadLimits(); // ✅ refresh limits from backend
+
+      } catch (err) {
+        console.error("❌ Failed to cancel limits:", err);
+        alert("Failed to cancel limits. Reverting changes...");
+
+        //  Revert optimistic update if DB failed
+        setActiveLimits((prev) => ({
+          ...prev,
+          [unitCode]: true,
+        }));
+
+        setSavingMap((prev) => ({ ...prev, [unitCode]: false }));
+      }
+    };
+
+
+    return (
+      <div className="flex flex-col gap-6 w-full">
+        <h2 className="text-2xl font-extrabold text-blue-300">Attendance Limits</h2>
+
+        {/* ✅ Proper grid layout */}
+        <div
+          className="grid gap-6 w-full"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            alignItems: "start",
+            gap: "24px",
+          }}
+        >
+          {units.map((u, idx) => {
+            const color = borderColors[idx % borderColors.length];
+            const data = localLimits[u.code] || {};
+            const time = data.timeLimit || {};
+            const geo = data.geo || {};
+            const errorMsg = errors[u.code];
+
+            return (
+              <div
+                key={u.code}
+                className="p-5 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                style={{
+                  border: `2px solid ${color}`,
+                  boxShadow: `0 6px 18px ${color}22`,
+                  background:
+                    "linear-gradient(180deg, rgba(15,23,42,0.7), rgba(15,23,42,0.5))",
+                  minHeight: "300px", // ✅ keeps consistent height
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <div className="font-bold text-cyan-200 mb-2">
+                    {u.name} <span className="text-sm text-gray-400">({u.code})</span>
                   </div>
-                  {errorMsg && (
-                    <p className="text-red-400 text-xs mt-1">{errorMsg}</p>
+
+                  {activeLimits[u.code] ? (
+                    // --- When active ---
+                    <div className="flex flex-col gap-3 mt-2">
+                      <p className="text-sm text-gray-300 flex items-center gap-2">
+                        🕒 <span>{activeLimits[u.code].time_limit}</span>
+                      </p>
+                      {activeLimits[u.code].location_radius && (
+                        <p className="text-sm text-gray-300 flex items-center gap-2">
+                          📍 <span>{activeLimits[u.code].location_radius} m radius</span>
+                        </p>
+                      )}
+                      <LiveCountdown endTime={activeLimits[u.code].time_limit?.split("-")[1]} />
+
+                      {/*  Transparent Cancel Button */}
+                      <button
+                        onClick={() => handleCancel(u.code)}
+                        disabled={savingMap[u.code]}
+                        className={`text-red-500 hover:text-red-700 transition ${savingMap[u.code] ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                      >
+                        {savingMap[u.code] ? "Removing…" : "Cancel Limits"}
+                      </button>
+
+
+                    </div>
+                  ) : (
+                    // --- When not active (original form) ---
+                    <>
+                      {/* Time Range */}
+                      <div className="mb-3">
+                        <label className="text-sm text-gray-300 block mb-1">
+                          Attendance Time Window
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="time"
+                            value={time.start || ""}
+                            onChange={(e) => handleTimeChange(u.code, "start", e.target.value)}
+                            className="w-1/2 p-2 rounded bg-slate-800 text-white"
+                          />
+                          <span className="text-gray-400">to</span>
+                          <input
+                            type="time"
+                            value={time.end || ""}
+                            onChange={(e) => handleTimeChange(u.code, "end", e.target.value)}
+                            className="w-1/2 p-2 rounded bg-slate-800 text-white"
+                          />
+                        </div>
+                        {errorMsg && (
+                          <p className="text-red-400 text-xs mt-1">{errorMsg}</p>
+                        )}
+                      </div>
+
+                      {/* Geo Options */}
+                      <div className="flex items-center mb-2 gap-2">
+                        <input
+                          type="checkbox"
+                          checked={geo.enabled}
+                          onChange={(e) =>
+                            handleGeoChange(u.code, "enabled", e.target.checked)
+                          }
+                        />
+                        <span className="text-sm text-gray-300">Enable Geolocation</span>
+                      </div>
+
+                      {geo.enabled && (
+                        <div className="space-y-2 mb-3">
+                          <input
+                            type="text"
+                            placeholder="Latitude"
+                            value={geo.lat || ""}
+                            onChange={(e) => handleGeoChange(u.code, "lat", e.target.value)}
+                            className="w-full p-2 rounded bg-slate-800 text-white"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Longitude"
+                            value={geo.lng || ""}
+                            onChange={(e) => handleGeoChange(u.code, "lng", e.target.value)}
+                            className="w-full p-2 rounded bg-slate-800 text-white"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Radius (meters)"
+                            value={geo.radius || ""}
+                            onChange={(e) => handleGeoChange(u.code, "radius", e.target.value)}
+                            className="w-full p-2 rounded bg-slate-800 text-white"
+                          />
+                          <Button
+                            onClick={() => handleUseMyLocation(u.code)}
+                            className="w-full bg-blue-600 hover:bg-blue-700"
+                          >
+                            Use My Location
+                          </Button>
+                        </div>
+                      )}
+
+                      <Button
+                        onClick={() => handleSave(u.code)}
+                        disabled={!!errorMsg}
+                        className={`w-full mt-2 ${errorMsg
+                          ? "bg-gray-600 cursor-not-allowed"
+                          : "bg-green-600 hover:bg-green-700"
+                          }`}
+                      >
+                        Save Limits
+                      </Button>
+                    </>
                   )}
                 </div>
-
-                {/* Geo Options */}
-                <div className="flex items-center mb-2 gap-2">
-                  <input
-                    type="checkbox"
-                    checked={geo.enabled}
-                    onChange={(e) =>
-                      handleGeoChange(u.code, "enabled", e.target.checked)
-                    }
-                  />
-                  <span className="text-sm text-gray-300">
-                    Enable Geolocation
-                  </span>
-                </div>
-
-                {geo.enabled && (
-                  <div className="space-y-2 mb-3">
-                    <input
-                      type="text"
-                      placeholder="Latitude"
-                      value={geo.lat || ""}
-                      onChange={(e) =>
-                        handleGeoChange(u.code, "lat", e.target.value)
-                      }
-                      className="w-full p-2 rounded bg-slate-800 text-white"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Longitude"
-                      value={geo.lng || ""}
-                      onChange={(e) =>
-                        handleGeoChange(u.code, "lng", e.target.value)
-                      }
-                      className="w-full p-2 rounded bg-slate-800 text-white"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Radius (meters)"
-                      value={geo.radius || ""}
-                      onChange={(e) =>
-                        handleGeoChange(u.code, "radius", e.target.value)
-                      }
-                      className="w-full p-2 rounded bg-slate-800 text-white"
-                    />
-                    <Button
-                      onClick={() => handleUseMyLocation(u.code)}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      Use My Location
-                    </Button>
-                  </div>
-                )}
               </div>
-
-              <Button
-                onClick={() => handleSave(u.code)}
-                disabled={!!errorMsg}
-                className={`w-full mt-2 ${
-                  errorMsg
-                    ? "bg-gray-600 cursor-not-allowed"
-                    : "bg-green-600 hover:bg-green-700"
-                }`}
-              >
-                Save Limits
-              </Button>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+  function LiveCountdown({ endTime }) {
+    const [remaining, setRemaining] = useState("");
+
+    useEffect(() => {
+      if (!endTime) return;
+      const [endH, endM] = endTime.split(":");
+      const interval = setInterval(() => {
+        const now = new Date();
+        const end = new Date();
+        end.setHours(endH, endM, 0, 0);
+        const diff = end - now;
+        if (diff <= 0) {
+          setRemaining("⏱ Attendance window closed");
+          clearInterval(interval);
+        } else {
+          const mins = Math.floor(diff / 60000);
+          const secs = Math.floor((diff % 60000) / 1000);
+          setRemaining(`${mins}m ${secs}s remaining`);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }, [endTime]);
+
+    return <p className="text-green-400 text-sm">{remaining}</p>;
+  }
 
 
   function StudentsView() {
@@ -582,52 +767,51 @@ function LimitsView() {
       <div className="circle circle6"></div>
 
       {/* Sidebar */}
-<aside style={sidebarStyle}>
-  <div
-    style={{
-      display: "flex",
-      flexDirection: "column",
-      height: "100%",
-      justifyContent: "space-between",
-      padding: 16,
-    }}
-  >
-    {/* --- Top section with logo and toggle button --- */}
-    <div>
-      {/* Logo */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: sidebarOpen ? "flex-start" : "center",
-          marginBottom: 20,
-        }}
-      >
-        <img
-          src="/src/logo.png"
-          alt="Logo"
+      <aside style={sidebarStyle}>
+        <div
           style={{
-            height: 100,
-            width: 100,
-            borderRadius: "50%",
-            marginRight: sidebarOpen ? 0 : 0,
-            transition: "all 0.3s ease",
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            justifyContent: "space-between",
+            padding: 16,
           }}
-        />
-        {sidebarOpen && (
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: "1.1rem",
-              color: "#7dd3fc",
-              transition: "opacity 0.3s ease",
-            }}
-          >
-            Tutor Dashboard
-          </span>
-        )}
-      </div>
-      {/* Profile Section */}
+        >
+          {/* --- Top section with logo and toggle button --- */}
+          <div>
+            {/* Logo */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: sidebarOpen ? "flex-start" : "center",
+                marginBottom: 20,
+              }}
+            >
+              <img
+                src="/logo.png" alt="Logo"
+                style={{
+                  height: 100,
+                  width: 100,
+                  borderRadius: "50%",
+                  marginRight: sidebarOpen ? 0 : 0,
+                  transition: "all 0.3s ease",
+                }}
+              />
+              {sidebarOpen && (
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontSize: "1.1rem",
+                    color: "#7dd3fc",
+                    transition: "opacity 0.3s ease",
+                  }}
+                >
+                  Tutor Dashboard
+                </span>
+              )}
+            </div>
+            {/* Profile Section */}
             <div
               style={{
                 display: "flex",
@@ -640,7 +824,7 @@ function LimitsView() {
               }}
             >
               <img
-                src="/src/profile.jpeg" 
+                src="/src/profile.jpeg"
                 alt="Profile"
                 style={{
                   width: 60,
@@ -661,110 +845,108 @@ function LimitsView() {
             </div>
 
 
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        style={{
-          background: "transparent",
-          border: "none",
-          color: "#22d3ee", // neon cyan
-          fontSize: "1.5rem",
-          marginBottom: "10px",
-          padding: "8px",
-          borderRadius: "10px",
-          boxShadow: "0 0 8px rgba(34,211,238,0.5)",
-          cursor: "pointer",
-          transition: "all 0.3s ease",
-          textShadow: "0 0 6px rgba(34,211,238,0.7)",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow = "0 0 15px rgba(34,211,238,0.8)";
-          e.currentTarget.style.textShadow =
-            "0 0 12px rgba(34,211,238,0.9), 0 0 20px rgba(34,211,238,0.7)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = "0 0 8px rgba(34,211,238,0.5)";
-          e.currentTarget.style.textShadow = "0 0 6px rgba(34,211,238,0.7)";
-        }}
-      >
-        {sidebarOpen ? <FiChevronLeft /> : <FiMenu />}
-      </button>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#22d3ee", // neon cyan
+                fontSize: "1.5rem",
+                marginBottom: "10px",
+                padding: "8px",
+                borderRadius: "10px",
+                boxShadow: "0 0 8px rgba(34,211,238,0.5)",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+                textShadow: "0 0 6px rgba(34,211,238,0.7)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = "0 0 15px rgba(34,211,238,0.8)";
+                e.currentTarget.style.textShadow =
+                  "0 0 12px rgba(34,211,238,0.9), 0 0 20px rgba(34,211,238,0.7)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = "0 0 8px rgba(34,211,238,0.5)";
+                e.currentTarget.style.textShadow = "0 0 6px rgba(34,211,238,0.7)";
+              }}
+            >
+              {sidebarOpen ? <FiChevronLeft /> : <FiMenu />}
+            </button>
 
-      {/* Navigation */}
-      <nav
-  
-  style={{
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-    transition: "opacity 0.3s",
-  }}
->
-  {[
-    { id: "units", icon: <FiBook />, label: "Units" },
-    { id: "limits", icon: <FiClock />, label: "Limits" },
-    { id: "students", icon: <FiUsers />, label: "Students" },
-    { id: "attendance", icon: <FiCalendar />, label: "Attendance" },
-    { id: "rewards", icon: <FiGift />, label: "Rewards" },
-  ].map(({ id, icon, label }) => (
-    <button
-      key={id}
-      onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-3 p-3 rounded-lg w-full text-left transition-all duration-300 ${
-        activeTab === id ? "text-cyan-400" : "text-slate-200"
-      }`}
-      style={{
-        background: "transparent",
-        border: "none",
-        boxShadow:
-          activeTab === id
-            ? "0 0 10px rgba(34,211,238,0.8)"
-            : "0 0 0 rgba(0,0,0,0)",
-        textShadow:
-          activeTab === id
-            ? "0 0 8px rgba(34,211,238,0.8)"
-            : "0 0 4px rgba(148,163,184,0.4)",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.textShadow =
-          "0 0 8px rgba(34,211,238,0.8), 0 0 15px rgba(34,211,238,0.6)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.textShadow =
-          activeTab === id
-            ? "0 0 8px rgba(34,211,238,0.8)"
-            : "0 0 4px rgba(148,163,184,0.4)";
-      }}
-    >
-      {icon}
-      {sidebarOpen && (
-        <span
-          className={`font-semibold ${
-            activeTab === id ? "text-cyan-400" : "text-slate-300"
-          }`}
-        >
-          {label}
-        </span>
-      )}
-    </button>
-  ))}
-</nav>
+            {/* Navigation */}
+            <nav
 
-    </div>
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                transition: "opacity 0.3s",
+              }}
+            >
+              {[
+                { id: "units", icon: <FiBook />, label: "Units" },
+                { id: "limits", icon: <FiClock />, label: "Limits" },
+                { id: "students", icon: <FiUsers />, label: "Students" },
+                { id: "attendance", icon: <FiCalendar />, label: "Attendance" },
+                { id: "rewards", icon: <FiGift />, label: "Rewards" },
+              ].map(({ id, icon, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`flex items-center gap-3 p-3 rounded-lg w-full text-left transition-all duration-300 ${activeTab === id ? "text-cyan-400" : "text-slate-200"
+                    }`}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    boxShadow:
+                      activeTab === id
+                        ? "0 0 10px rgba(34,211,238,0.8)"
+                        : "0 0 0 rgba(0,0,0,0)",
+                    textShadow:
+                      activeTab === id
+                        ? "0 0 8px rgba(34,211,238,0.8)"
+                        : "0 0 4px rgba(148,163,184,0.4)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.textShadow =
+                      "0 0 8px rgba(34,211,238,0.8), 0 0 15px rgba(34,211,238,0.6)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.textShadow =
+                      activeTab === id
+                        ? "0 0 8px rgba(34,211,238,0.8)"
+                        : "0 0 4px rgba(148,163,184,0.4)";
+                  }}
+                >
+                  {icon}
+                  {sidebarOpen && (
+                    <span
+                      className={`font-semibold ${activeTab === id ? "text-cyan-400" : "text-slate-300"
+                        }`}
+                    >
+                      {label}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
 
-    {/* --- Footer section --- */}
-    <div
-      style={{
-        fontSize: "12px",
-        color: "#9ca3af",
-        textAlign: sidebarOpen ? "left" : "center",
-        paddingTop: 10,
-        borderTop: "1px solid rgba(255,255,255,0.1)",
-      }}
-    >
-      © {new Date().getFullYear()} FaceTally
-    </div>
-  </div>
-</aside>
+          </div>
+
+          {/* --- Footer section --- */}
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#9ca3af",
+              textAlign: sidebarOpen ? "left" : "center",
+              paddingTop: 10,
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
+            © {new Date().getFullYear()} FaceTally
+          </div>
+        </div>
+      </aside>
 
       {/* Main Content */}
       <main style={{ flex: 1, padding: "32px" }}>

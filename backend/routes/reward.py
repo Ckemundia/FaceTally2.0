@@ -5,10 +5,12 @@ from hedera_utils import reward_student
 
 router = APIRouter(prefix="/reward", tags=["Reward"])
 
+
 # --- Pydantic model to accept JSON body ---
 class RewardIn(BaseModel):
     student_wallet: str
     amount: int = 1
+
 
 @router.post("/give")
 def give_reward(payload: RewardIn):

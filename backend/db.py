@@ -6,29 +6,35 @@ import json
 
 DB_PATH = os.environ.get("FRAS_DB", "faceattend.db")
 
+
 def get_db():
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  
+    conn.row_factory = sqlite3.Row
     return conn
 
+
 # ---------------- INIT ---------------- #
+
 
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
 
         # Users table
-        cur.execute("""
+        cur.execute(
+            """
         CREATE TABLE IF NOT EXISTS users (
             student_id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             embedding TEXT NOT NULL,  -- stored as JSON string
             wallet TEXT UNIQUE        -- enforce uniqueness
         )
-        """)
+        """
+        )
 
         # Attendance table
-        cur.execute("""
+        cur.execute(
+            """
         CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id TEXT NOT NULL,
@@ -37,18 +43,22 @@ def init_db():
             txid TEXT,
             FOREIGN KEY(student_id) REFERENCES users(student_id)
         )
-        """)
+        """
+        )
 
         # Units table
-        cur.execute("""
+        cur.execute(
+            """
         CREATE TABLE IF NOT EXISTS units (
             unit_code TEXT PRIMARY KEY,
             unit_name TEXT NOT NULL
         )
-        """)
+        """
+        )
 
         # Student ↔ Units (many-to-many relationship)
-        cur.execute("""
+        cur.execute(
+            """
         CREATE TABLE IF NOT EXISTS student_units (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id TEXT NOT NULL,
@@ -56,10 +66,12 @@ def init_db():
             FOREIGN KEY(student_id) REFERENCES users(student_id),
             FOREIGN KEY(unit_code) REFERENCES units(unit_code)
         )
-        """)
+        """
+        )
 
         # Rewards table
-        cur.execute("""
+        cur.execute(
+            """
         CREATE TABLE IF NOT EXISTS rewards (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id TEXT NOT NULL,
@@ -68,10 +80,12 @@ def init_db():
             FOREIGN KEY(student_id) REFERENCES users(student_id),
             UNIQUE(student_id, date)
         )
-        """)
+        """
+        )
 
         # Unit settings table (NEW)
-        cur.execute("""
+        cur.execute(
+            """
         CREATE TABLE IF NOT EXISTS unit_settings (
             unit_code TEXT PRIMARY KEY,
             is_active INTEGER NOT NULL DEFAULT 1,
@@ -79,10 +93,11 @@ def init_db():
             time_limit TEXT,
             FOREIGN KEY(unit_code) REFERENCES units(unit_code)
         )
-        """)
-        
+        """
+        )
+
         conn.commit()
-    
+
         # --- Prepopulate units ---
         default_units = [
             ("CS101", "Data Structures"),
@@ -103,13 +118,15 @@ def init_db():
         for code, name in default_units:
             cur.execute(
                 "INSERT OR IGNORE INTO units(unit_code, unit_name) VALUES (?, ?)",
-                (code, name)
+                (code, name),
             )
 
         conn.commit()
         print("[DB] Initialized database with units at", DB_PATH)
 
+
 # ---------------- HELPERS ---------------- #
+
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     a = a / np.linalg.norm(a)
@@ -118,6 +135,7 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 
 
 # ---------------- USERS ---------------- #
+
 
 def save_user(student_id: str, name: str, embedding: list, wallet: str | None):
     """
@@ -136,10 +154,13 @@ def save_user(student_id: str, name: str, embedding: list, wallet: str | None):
 
         with sqlite3.connect(DB_PATH) as conn:
             cur = conn.cursor()
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO users(student_id, name, embedding, wallet)
                 VALUES (?, ?, ?, ?)
-            """, (student_id, name, json.dumps(embedding), wallet))
+            """,
+                (student_id, name, json.dumps(embedding), wallet),
+            )
             conn.commit()
             print(f"[DB] ✅ User {student_id} saved successfully")
 
@@ -181,14 +202,18 @@ def get_user_name(student_id: str):
 
 # ---------------- ATTENDANCE ---------------- #
 
+
 def record_attendance(student_id: str, unit: str, txid: str | None = None):
     try:
         with sqlite3.connect(DB_PATH) as conn:
             cur = conn.cursor()
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO attendance (student_id, timestamp, unit, txid)
                 VALUES (?, ?, ?, ?)
-            """, (student_id, datetime.datetime.utcnow().isoformat(), unit, txid))
+            """,
+                (student_id, datetime.datetime.utcnow().isoformat(), unit, txid),
+            )
             conn.commit()
             print(f"[DB] ✅ Attendance recorded for {student_id} ({unit})")
     except Exception as e:
@@ -201,7 +226,7 @@ def last_attendance_time(student_id: str):
         cur = conn.cursor()
         cur.execute(
             "SELECT timestamp FROM attendance WHERE student_id=? ORDER BY id DESC LIMIT 1",
-            (student_id,)
+            (student_id,),
         )
         row = cur.fetchone()
     if not row:
@@ -213,18 +238,24 @@ def list_attendance(limit: int = 100, student_id: str | None = None):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
         if student_id:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT id, student_id, timestamp, unit, txid 
                 FROM attendance 
                 WHERE student_id = ?
                 ORDER BY id DESC LIMIT ?
-            """, (student_id, limit))
+            """,
+                (student_id, limit),
+            )
         else:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT id, student_id, timestamp, unit, txid 
                 FROM attendance 
                 ORDER BY id DESC LIMIT ?
-            """, (limit,))
+            """,
+                (limit,),
+            )
         rows = cur.fetchall()
 
     return [
@@ -234,6 +265,7 @@ def list_attendance(limit: int = 100, student_id: str | None = None):
 
 
 # ---------------- UNITS ---------------- #
+
 
 def list_units():
     with sqlite3.connect(DB_PATH) as conn:
@@ -250,18 +282,21 @@ def assign_units(student_id: str, unit_codes: list[str]):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
         for code in unit_codes:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT OR IGNORE INTO student_units (student_id, unit_code)
                 VALUES (?, ?)
-            """, (student_id, code))
+            """,
+                (student_id, code),
+            )
         conn.commit()
 
-    
 
 def get_student_units(student_id: str):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             SELECT 
                 u.unit_code, 
                 u.unit_name,
@@ -270,18 +305,15 @@ def get_student_units(student_id: str):
             JOIN units u ON su.unit_code = u.unit_code
             LEFT JOIN unit_settings us ON u.unit_code = us.unit_code
             WHERE su.student_id = ?
-        """, (student_id,))
+        """,
+            (student_id,),
+        )
         rows = cur.fetchall()
 
     return [
-        {
-            "unit_code": row[0],
-            "unit_name": row[1],
-            "is_active": bool(row[2])
-        }
+        {"unit_code": row[0], "unit_name": row[1], "is_active": bool(row[2])}
         for row in rows
     ]
-
 
 
 def get_units():
@@ -294,58 +326,129 @@ def get_units():
 
 # ---------------- REWARDS ---------------- #
 
+
 def log_reward_claim(student_id: str, date: str, status: str = "claimed"):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             INSERT OR IGNORE INTO rewards(student_id, date, status)
             VALUES (?, ?, ?)
-        """, (student_id, date, status))
+        """,
+            (student_id, date, status),
+        )
         conn.commit()
 
 
 def list_rewards(student_id: str, limit: int = 50):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             SELECT id, student_id, date, status
             FROM rewards
             WHERE student_id = ?
             ORDER BY date DESC LIMIT ?
-        """, (student_id, limit))
+        """,
+            (student_id, limit),
+        )
         rows = cur.fetchall()
     return [
-        {"id": r[0], "student_id": r[1], "date": r[2], "status": r[3]}
-        for r in rows
+        {"id": r[0], "student_id": r[1], "date": r[2], "status": r[3]} for r in rows
     ]
 
-def set_unit_status(unit_code: str, active: bool, attendance_limit: int | None = None):
+
+def set_unit_status(
+    unit_code: str,
+    active: bool,
+    attendance_limit: int | None = None,
+    time_limit: str | None = None,
+    location_lat: float | None = None,
+    location_lng: float | None = None,
+    location_radius: float | None = None,
+):
+    """
+    Update or insert settings for a unit, including optional time and location restrictions.
+    """
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO unit_settings (unit_code, is_active, attendance_limit)
-            VALUES (?, ?, ?)
-            ON CONFLICT(unit_code) DO UPDATE 
-                SET is_active = excluded.is_active,
-                    attendance_limit = excluded.attendance_limit
-        """, (unit_code, int(active), attendance_limit))
+        cur.execute(
+            """
+            INSERT INTO unit_settings (
+                unit_code, 
+                is_active, 
+                attendance_limit, 
+                time_limit, 
+                location_lat, 
+                location_lng, 
+                location_radius
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(unit_code) DO UPDATE SET
+                is_active = excluded.is_active,
+                attendance_limit = excluded.attendance_limit,
+                time_limit = excluded.time_limit,
+                location_lat = excluded.location_lat,
+                location_lng = excluded.location_lng,
+                location_radius = excluded.location_radius
+            """,
+            (
+                unit_code,
+                int(active),
+                attendance_limit,
+                time_limit,
+                location_lat,
+                location_lng,
+                location_radius,
+            ),
+        )
         conn.commit()
 
 
 def get_unit_status(unit_code: str):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT is_active, attendance_limit FROM unit_settings WHERE unit_code=?", (unit_code,))
+        cur.execute(
+            """
+            SELECT 
+                is_active, 
+                attendance_limit, 
+                time_limit, 
+                location_lat, 
+                location_lng, 
+                location_radius
+            FROM unit_settings 
+            WHERE unit_code = ?
+            """,
+            (unit_code,),
+        )
         row = cur.fetchone()
+
+    if not row:
+        return {
+            "is_active": False,
+            "attendance_limit": None,
+            "time_limit": None,
+            "location_lat": None,
+            "location_lng": None,
+            "location_radius": None,
+        }
+
     return {
         "is_active": bool(row[0]),
-        "attendance_limit": row[1]
-    } if row else {"is_active": False, "attendance_limit": None}
+        "attendance_limit": row[1],
+        "time_limit": row[2],
+        "location_lat": row[3],
+        "location_lng": row[4],
+        "location_radius": row[5],
+    }
+
 
 def list_students_with_attendance(unit_code: str, date: str):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             SELECT u.student_id, u.name, 
                    CASE WHEN a.id IS NOT NULL THEN 1 ELSE 0 END as present
             FROM users u
@@ -355,39 +458,101 @@ def list_students_with_attendance(unit_code: str, date: str):
                AND a.unit = su.unit_code
                AND date(a.timestamp) = ?
             WHERE su.unit_code = ?
-        """, (date, unit_code))
+        """,
+            (date, unit_code),
+        )
         rows = cur.fetchall()
     return [{"student_id": r[0], "name": r[1], "present": bool(r[2])} for r in rows]
+
 
 def export_attendance(unit_code: str, date: str):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             SELECT a.student_id, u.name, a.timestamp, a.unit
             FROM attendance a
             JOIN users u ON a.student_id = u.student_id
             WHERE a.unit = ? AND date(a.timestamp) = ?
             ORDER BY a.timestamp
-        """, (unit_code, date))
+        """,
+            (unit_code, date),
+        )
         rows = cur.fetchall()
     return [
         {"student_id": r[0], "name": r[1], "timestamp": r[2], "unit": r[3]}
         for r in rows
     ]
 
+
 def get_student_by_id(student_id: str):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    cursor.execute("""
+    cursor.execute(
+        """
         SELECT student_id, name, wallet
         FROM users
         WHERE student_id = ?
-    """, (student_id,))
+    """,
+        (student_id,),
+    )
     row = cursor.fetchone()
     conn.close()
 
     if row is None:
         print(f"[DEBUG] get_student_by_id: No student found for {student_id}")
     return dict(row) if row else None
+
+
+def get_student_wallet(student_id: str):
+    """
+    Return the wallet address for a given student_id.
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT wallet FROM users WHERE student_id = ?", (student_id,))
+        row = cur.fetchone()
+    return row[0] if row else None
+
+
+def update_attendance_txid(student_id: str, unit: str, txid: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        # find latest attendance id
+        cur.execute(
+            "SELECT id FROM attendance WHERE student_id = ? AND unit = ? ORDER BY id DESC LIMIT 1",
+            (student_id, unit),
+        )
+        row = cur.fetchone()
+        if row:
+            cur.execute("UPDATE attendance SET txid = ? WHERE id = ?", (txid, row[0]))
+            conn.commit()
+            print(f"[DB] ✅ Updated attendance txid for {student_id} ({unit}) → {txid}")
+        else:
+            print(f"[DB] ⚠️ No attendance record found for {student_id} ({unit})")
+
+
+def get_all_unit_statuses():
+    """
+    Returns all rows from the unit_settings table.
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row  # allows dict-like access
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT 
+                unit_code,
+                is_active,
+                attendance_limit,
+                time_limit,
+                location_lat,
+                location_lng,
+                location_radius
+            FROM unit_settings
+        """
+        )
+        rows = [dict(row) for row in cur.fetchall()]
+    return rows

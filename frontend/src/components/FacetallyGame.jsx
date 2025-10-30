@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 
 // Canvas Dimensions 
-const GAME_WIDTH = 900;  
-const GAME_HEIGHT = 600; 
+const GAME_WIDTH = 900;
+const GAME_HEIGHT = 600;
 
 const ASSET_BASE = "/assets";
 const ASSET_OBJECTS = {
@@ -22,8 +22,8 @@ const ASSET_SOUNDS = {
   hit: `${ASSET_BASE}/sounds/hit.mp3`,
   bomb: `${ASSET_BASE}/sounds/bomb.mp3`,
   clock: `${ASSET_BASE}/sounds/clock.mp3`,
-  victory: `${ASSET_BASE}/sounds/victory.mp3`,  
-  lose: `${ASSET_BASE}/sounds/lose.mp3`,     
+  victory: `${ASSET_BASE}/sounds/victory.mp3`,
+  lose: `${ASSET_BASE}/sounds/lose.mp3`,
 };
 
 export default function FacetallyCatchGame() {
@@ -96,7 +96,7 @@ export default function FacetallyCatchGame() {
   }, []);
 
   // Resize Canvas
-useEffect(() => {
+  useEffect(() => {
     const canvas = canvasRef.current;
     const resize = () => {
       const w = GAME_WIDTH;
@@ -115,50 +115,50 @@ useEffect(() => {
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, []);
-  
-// 🎮 Handle keyboard and mouse movement (with spacebar pause)
-useEffect(() => {
-  const s = stateRef.current;
 
-  const handleKeyDown = (e) => {
-    if (e.key === "ArrowLeft" || e.key === "a") s.keys.left = true;
-    if (e.key === "ArrowRight" || e.key === "d") s.keys.right = true;
+  // 🎮 Handle keyboard and mouse movement (with spacebar pause)
+  useEffect(() => {
+    const s = stateRef.current;
 
-    //  Spacebar toggles pause
-    if (e.code === "Space") {
-      e.preventDefault(); // stop page scroll
-      setPaused((p) => !p);
-    }
-  };
+    const handleKeyDown = (e) => {
+      if (e.key === "ArrowLeft" || e.key === "a") s.keys.left = true;
+      if (e.key === "ArrowRight" || e.key === "d") s.keys.right = true;
 
-  const handleKeyUp = (e) => {
-    if (e.key === "ArrowLeft" || e.key === "a") s.keys.left = false;
-    if (e.key === "ArrowRight" || e.key === "d") s.keys.right = false;
-  };
+      //  Spacebar toggles pause
+      if (e.code === "Space") {
+        e.preventDefault(); // stop page scroll
+        setPaused((p) => !p);
+      }
+    };
 
-  const handleMouseMove = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    s.mouseX = x;
-  };
+    const handleKeyUp = (e) => {
+      if (e.key === "ArrowLeft" || e.key === "a") s.keys.left = false;
+      if (e.key === "ArrowRight" || e.key === "d") s.keys.right = false;
+    };
 
-  window.addEventListener("keydown", handleKeyDown);
-  window.addEventListener("keyup", handleKeyUp);
-  window.addEventListener("mousemove", handleMouseMove);
+    const handleMouseMove = (e) => {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      s.mouseX = x;
+    };
 
-  return () => {
-    window.removeEventListener("keydown", handleKeyDown);
-    window.removeEventListener("keyup", handleKeyUp);
-    window.removeEventListener("mousemove", handleMouseMove);
-  };
-}, []);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, []);
 
   const tryPlay = (key) => {
     if (!soundOn) return;
     const a = soundsRef.current[key];
     if (a) {
       a.currentTime = 0;
-      a.play().catch(() => {});
+      a.play().catch(() => { });
     }
   };
   //  Control background music
@@ -170,7 +170,7 @@ useEffect(() => {
       bg.loop = true;
       bg.volume = 0.4;
       bg.currentTime = 0;
-      bg.play().catch(() => {});
+      bg.play().catch(() => { });
     } else {
       bg.pause();
       bg.currentTime = 0;
@@ -178,30 +178,77 @@ useEffect(() => {
   };
 
   const spawnObject = () => {
-  const { width } = stateRef.current;
-  const roll = Math.random();
-  let type = "logo";
+    const { width } = stateRef.current;
+    const elapsed = 60 - timeLeft; // seconds passed
+    const progress = Math.min(1, elapsed / 60); // clamp 0–1
 
-  // Increase bomb frequency and variety
-  if (roll < 0.4) type = "logo";
-  else if (roll < 0.6) type = "fakelogo";
-  else if (roll < 0.75) type = "rock1";
-  else if (roll < 0.85) type = "rock2";
-  else if (roll < 0.9) type = "happy1";
-  else if (roll < 0.94) type = "happy2";
-  else type = "bomb"; // 💣 bombs appear more often
+    // 💣 Bomb chance: starts 15%, ends 80%
+    const bombChance = 0.15 + progress * 0.65;
 
-  // Make objects larger
-  const sizeMap = {
-    logo: 100, fakelogo: 110, rock1: 90, rock2: 138,
-    bomb: 89, happy1: 80, happy2: 70, evilclock: 100
+    // 🎲 Choose object type
+    const roll = Math.random();
+    let type = "logo";
+    if (roll < bombChance) type = "bomb";
+    else if (roll < 0.55) type = "logo";
+    else if (roll < 0.7) type = "fakelogo";
+    else if (roll < 0.85) type = "rock1";
+    else if (roll < 0.9) type = "rock2";
+    else if (roll < 0.95) type = "happy1";
+    else type = "happy2";
+
+    const sizeMap = {
+      logo: 100, fakelogo: 110, rock1: 90, rock2: 138,
+      bomb: 89, happy1: 80, happy2: 70, evilclock: 100,
+    };
+
+    const w = sizeMap[type];
+    const x = Math.random() * (width - w - 20) + 10;
+
+    // ⚡ Speed ramps up more aggressively
+    const baseSpeed = 2 + progress * 5; // start at 2× → end at 7×
+    const speed = (baseSpeed + Math.random() * 1.8) * stateRef.current.speedMultiplier;
+
+    stateRef.current.objects.push({ id: Math.random(), type, x, y: -w, w, h: w, speed });
+
+    // 💥 Add more simultaneous bombs (especially later)
+    const extraBombs = progress < 0.3 ? 0 : progress < 0.7 ? 1 : 2;
+    for (let i = 0; i < extraBombs; i++) {
+      const bx = Math.random() * (width - 80) + 10;
+      stateRef.current.objects.push({
+        id: Math.random(),
+        type: "bomb",
+        x: bx,
+        y: -90 * (i + 1),
+        w: 90,
+        h: 90,
+        speed: 3 + Math.random() * 4,
+      });
+    }
+
+    // 🌋 Final 15s = bomb storm
+    if (timeLeft <= 15) {
+      for (let i = 0; i < 3; i++) {
+        const bx = Math.random() * (width - 90) + 10;
+        stateRef.current.objects.push({
+          id: Math.random(),
+          type: "bomb",
+          x: bx,
+          y: -100 * i,
+          w: 90,
+          h: 90,
+          speed: 3 + Math.random() * 5,
+        });
+      }
+    }
+
+    // 🕒 Faster spawn rate — minimum 150 ms
+    const baseInterval = 1200; // start slower
+    const minInterval = 150;   // much faster
+    const currentInterval = Math.max(baseInterval - elapsed * 25, minInterval);
+
+    clearTimeout(stateRef.current.spawnTimeout);
+    stateRef.current.spawnTimeout = setTimeout(spawnObject, currentInterval);
   };
-
-  const w = sizeMap[type];
-  const x = Math.random() * (width - w - 20) + 10;
-  const speed = (1 + Math.random() * 1.2) * stateRef.current.speedMultiplier;
-  stateRef.current.objects.push({ id: Math.random(), type, x, y: -w, w, h: w, speed });
-};
 
   const handleCatch = (o) => {
     if (gameOver) return;
@@ -232,8 +279,8 @@ useEffect(() => {
         tryPlay("hit");
         break;
       case "bomb":
-        tryPlay("lose"); 
-        controlBGMusic(false); 
+        tryPlay("lose");
+        controlBGMusic(false);
         setMessage("💣 Boom! Game Over");
         setTimeout(() => {
           setGameOver(true);
@@ -241,15 +288,16 @@ useEffect(() => {
         }, 300);
         break;
       case "happy1":
-        setTimeLeft(t => t + 5);
+        setTimeLeft(t => Math.min(60, t + 5)); //never exceed 60
         tryPlay("catch");
-        setMessage("+5s");
+        setMessage("+5s (max 60)");
         break;
       case "happy2":
-        setTimeLeft(t => t + 10);
+        setTimeLeft(t => Math.min(60, t + 10)); //never exceed 60
         tryPlay("catch");
-        setMessage("+10s");
+        setMessage("+10s (max 60)");
         break;
+
       case "evilclock":
         stateRef.current.speedMultiplier *= 1.8;
         tryPlay("hit");
@@ -273,16 +321,16 @@ useEffect(() => {
       if (!paused && running && !gameOver) {
         setTimeLeft(t => {
           if (t <= 1) {
-        setRunning(false);
-        controlBGMusic(false); 
-        setTimeout(() => {
-          setGameOver(true);
-          setMessage("🏆 You Survived!");
-          tryPlay("victory");
-          triggerConfetti();
-        }, 200);
-        return 0;
-        }
+            setRunning(false);
+            controlBGMusic(false);
+            setTimeout(() => {
+              setGameOver(true);
+              setMessage("🏆 You Survived!");
+              tryPlay("victory");
+              triggerConfetti();
+            }, 200);
+            return 0;
+          }
           return t - 1;
         });
       }
@@ -314,11 +362,12 @@ useEffect(() => {
         }
       }
       const moveSpeed = 14;
-        if (s.keys.left) s.basketX -= moveSpeed;
-        if (s.keys.right) s.basketX += moveSpeed;
-        if (s.mouseActive && s.mouseX !== null) {
-        s.basketX += (s.mouseX - (s.basketX + s.basketW / 2)) * 0.15;}
-        s.basketX = Math.max(0, Math.min(s.width - s.basketW, s.basketX));
+      if (s.keys.left) s.basketX -= moveSpeed;
+      if (s.keys.right) s.basketX += moveSpeed;
+      if (s.mouseActive && s.mouseX !== null) {
+        s.basketX += (s.mouseX - (s.basketX + s.basketW / 2)) * 0.15;
+      }
+      s.basketX = Math.max(0, Math.min(s.width - s.basketW, s.basketX));
 
       drawFrame(ctx);
       rafRef.current = requestAnimationFrame(loop);
@@ -335,10 +384,10 @@ useEffect(() => {
     const s = stateRef.current;
     ctx.clearRect(0, 0, s.width, s.height);
     const g = ctx.createLinearGradient(0, 0, 0, s.height);
-      g.addColorStop(0, "rgba(11, 21, 48, 0.3)");
-      g.addColorStop(1, "rgba(8, 16, 33, 0.3)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, s.width, s.height);
+    g.addColorStop(0, "rgba(11, 21, 48, 0.3)");
+    g.addColorStop(1, "rgba(8, 16, 33, 0.3)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, s.width, s.height);
 
     for (const o of s.objects) {
       const img = imagesRef.current[o.type];
@@ -359,296 +408,303 @@ useEffect(() => {
   };
 
   const startGame = () => {
-  setShowStart(false);
-  setGameOver(false);
-  setRunning(true);
-  setScore(0);
-  setTimeLeft(60);
-  tryPlay("clock");
-  controlBGMusic(true); 
-};
+    setShowStart(false);
+    setGameOver(false);
+    setRunning(true);
+    setScore(0);
+    setTimeLeft(60);
 
-  const restart = () => {
-  setGameOver(false);
-  setRunning(true);
-  setScore(0);
-  setTimeLeft(60);
-  stateRef.current.objects = [];
-  controlBGMusic(true); 
-};
+    stateRef.current.objects = [];
+    stateRef.current.speedMultiplier = 1;
 
-  const triggerConfetti = () => {
-  const canvas = document.createElement("canvas");
-  canvas.style.position = "absolute";
-  canvas.style.inset = 0;
-  canvas.style.zIndex = 999;
-  canvas.style.pointerEvents = "none";
-  document.body.appendChild(canvas);
+    clearTimeout(stateRef.current.spawnTimeout);
+    spawnObject(); //Start spawning objects immediately
 
-  const ctx = canvas.getContext("2d");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const confettis = Array.from({ length: 150 }).map(() => ({
-    x: Math.random() * canvas.width,
-    y: Math.random() * -canvas.height,
-    r: Math.random() * 6 + 2,
-    c: `hsl(${Math.random() * 360}, 100%, 60%)`,
-    s: Math.random() * 3 + 2,
-  }));
-
-  let animation;
-  const draw = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    confettis.forEach(cf => {
-      cf.y += cf.s;
-      if (cf.y > canvas.height) cf.y = 0;
-      ctx.beginPath();
-      ctx.arc(cf.x, cf.y, cf.r, 0, Math.PI * 2);
-      ctx.fillStyle = cf.c;
-      ctx.fill();
-    });
-    animation = requestAnimationFrame(draw);
+    tryPlay("clock");
+    controlBGMusic(true);
   };
 
-  draw();
-  setTimeout(() => {
-    cancelAnimationFrame(animation);
-    canvas.remove();
-  }, 5000); 
-};
+  const restart = () => {
+    setGameOver(false);
+    setRunning(true);
+    setScore(0);
+    setTimeLeft(60);
+    stateRef.current.objects = [];
+    controlBGMusic(true);
+  };
 
-const glassPanel = {
-  background: "rgba(255, 255, 255, 0.1)",
-  backdropFilter: "blur(20px) saturate(180%)",
-  WebkitBackdropFilter: "blur(20px) saturate(180%)", // Safari support
-  border: "1px solid rgba(255, 255, 255, 0.2)",
-  borderRadius: 16,
-  boxShadow:
-    "0 8px 32px rgba(0,0,0,0.3), inset 0 0 25px rgba(255,255,255,0.05)",
-  padding: 16,
-  transition: "all 0.3s ease",
-  color: "#e5e7eb",
-  zIndex: 1,
-};
+  const triggerConfetti = () => {
+    const canvas = document.createElement("canvas");
+    canvas.style.position = "absolute";
+    canvas.style.inset = 0;
+    canvas.style.zIndex = 999;
+    canvas.style.pointerEvents = "none";
+    document.body.appendChild(canvas);
 
-const iconBtnStyle = {
-  width: 48,
-  height: 48,
-  borderRadius: "50%",
-  background: "rgba(255,255,255,0.15)",
-  border: "1px solid rgba(255,255,255,0.3)",
-  color: "#fff",
-  fontSize: 22,
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  backdropFilter: "blur(6px)",
-  transition: "transform 0.2s ease, box-shadow 0.3s ease",
-};
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-const iconBtnHover = {
-  transform: "scale(1.1)",
-  boxShadow: "0 0 15px rgba(255,255,255,0.4)",
-};
+    const confettis = Array.from({ length: 150 }).map(() => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * -canvas.height,
+      r: Math.random() * 6 + 2,
+      c: `hsl(${Math.random() * 360}, 100%, 60%)`,
+      s: Math.random() * 3 + 2,
+    }));
 
-const btnStyle = {
-  padding: "10px 22px",
-  borderRadius: 12,
-  background: "linear-gradient(90deg,#60a5fa,#7c3aed)",
-  border: "none",
-  color: "#fff",
-  fontWeight: "bold",
-  cursor: "pointer",
-  transition: "all 0.3s ease",
-  boxShadow: "0 0 10px rgba(96,165,250,0.4)",
-};
+    let animation;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      confettis.forEach(cf => {
+        cf.y += cf.s;
+        if (cf.y > canvas.height) cf.y = 0;
+        ctx.beginPath();
+        ctx.arc(cf.x, cf.y, cf.r, 0, Math.PI * 2);
+        ctx.fillStyle = cf.c;
+        ctx.fill();
+      });
+      animation = requestAnimationFrame(draw);
+    };
 
-const btnHover = {
-  transform: "scale(1.05)",
-  boxShadow: "0 0 25px rgba(124,58,237,0.6)",
-};
+    draw();
+    setTimeout(() => {
+      cancelAnimationFrame(animation);
+      canvas.remove();
+    }, 5000);
+  };
 
-const overlayStyle = {
-  position: "absolute",
-  inset: 0,
-  background: "rgba(0, 0, 0, 0.3)",
-  backdropFilter: "blur(10px) brightness(1.1)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  zIndex: 10,
-  borderRadius: 20,
-};
+  const glassPanel = {
+    background: "rgba(255, 255, 255, 0.1)",
+    backdropFilter: "blur(20px) saturate(180%)",
+    WebkitBackdropFilter: "blur(20px) saturate(180%)", // Safari support
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+    borderRadius: 16,
+    boxShadow:
+      "0 8px 32px rgba(0,0,0,0.3), inset 0 0 25px rgba(255,255,255,0.05)",
+    padding: 16,
+    transition: "all 0.3s ease",
+    color: "#e5e7eb",
+    zIndex: 1,
+  };
 
-const overlayInner = {
-  textAlign: "center",
-  color: "#e0eaff",
-  animation: "fadeIn 0.8s ease forwards",
-};
+  const iconBtnStyle = {
+    width: 48,
+    height: 48,
+    borderRadius: "50%",
+    background: "rgba(255,255,255,0.15)",
+    border: "1px solid rgba(255,255,255,0.3)",
+    color: "#fff",
+    fontSize: 22,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    backdropFilter: "blur(6px)",
+    transition: "transform 0.2s ease, box-shadow 0.3s ease",
+  };
 
- // UI + Overlays
-return (
-  <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden" }}>
-  {/* ✨ Floating Background Circles (move to background layer) */}
-  <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
-    <div className="circle circle1" />
-    <div className="circle circle2" />
-    <div className="circle circle3" />
-    <div className="circle circle4" />
-    <div className="circle circle5" />
-    <div className="circle circle6" />
-  </div>
+  const iconBtnHover = {
+    transform: "scale(1.1)",
+    boxShadow: "0 0 15px rgba(255,255,255,0.4)",
+  };
 
-    {/* Main Layout */}
-    <div
-      style={{
-        position: "relative",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        padding: 24,
-        gap: 24,
-        zIndex: 1,
-      }}
-    >
-      {/* LEFT PANEL */}
-      <div style={{ ...glassPanel, width: 240 }}>
-        <h3 style={{ color: "#fff", marginBottom: 8 }}>⏱ Time Left</h3>
-        <div style={{ fontSize: 32, marginBottom: 12 }}>{Math.max(0, timeLeft)}s</div>
-        <div>Score: <b>{score}</b></div>
-        <div>Best: {best}</div>
-      </div>
+  const btnStyle = {
+    padding: "10px 22px",
+    borderRadius: 12,
+    background: "linear-gradient(90deg,#60a5fa,#7c3aed)",
+    border: "none",
+    color: "#fff",
+    fontWeight: "bold",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    boxShadow: "0 0 10px rgba(96,165,250,0.4)",
+  };
 
-      {/* 🎮 CENTER CANVAS AREA */}
-<div
-  style={{
-    flex: 1,
-    position: "relative",
+  const btnHover = {
+    transform: "scale(1.05)",
+    boxShadow: "0 0 25px rgba(124,58,237,0.6)",
+  };
+
+  const overlayStyle = {
+    position: "absolute",
+    inset: 0,
+    background: "rgba(0, 0, 0, 0.3)",
+    backdropFilter: "blur(10px) brightness(1.1)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 2, 
-  }}
->
-  {/* 🌫️ Glassy Canvas Container */}
-  <div
-    style={{
-      ...glassPanel,
-      width: `${GAME_WIDTH}px`,
-      height: `${GAME_HEIGHT}px`,
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      borderRadius: 20,
-      boxShadow: "0 0 35px rgba(0,0,0,0.4)",
-      position: "relative",
-      overflow: "hidden",
-      backdropFilter: "blur(12px)",
-      background: "rgba(255, 255, 255, 0.03)",
-    }}
-  >
-    <canvas
-      ref={canvasRef}
-      style={{
-        borderRadius: 20,
-        background: "transparent",
-        width: "100%",
-        height: "100%",
-      }}
-    />
+    zIndex: 10,
+    borderRadius: 20,
+  };
 
-          {/* Loading Overlay */}
-          {!assetsLoaded && (
-            <div style={overlayStyle}>
-              <div style={overlayInner}>
-                <h2>Loading assets...</h2>
-                <p>Please wait ⏳</p>
-              </div>
-            </div>
-          )}
+  const overlayInner = {
+    textAlign: "center",
+    color: "#e0eaff",
+    animation: "fadeIn 0.8s ease forwards",
+  };
 
-          {/* Start Overlay */}
-          {assetsLoaded && showStart && (
-            <div style={overlayStyle}>
-              <div style={overlayInner}>
-                <h1 style={{ fontSize: 42, marginBottom: 12 }}>Facetally Catch!</h1>
-                <p>Catch real logos, dodge bombs & rocks.</p>
-                <button
-                  style={btnStyle}
-                  onMouseEnter={e => Object.assign(e.target.style, btnHover)}
-                  onMouseLeave={e => Object.assign(e.target.style, btnStyle)}
-                  onClick={startGame}
-                >
-                  Start Game
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Game Over / Victory Overlay */}
-          {gameOver && (
-            <div style={overlayStyle}>
-              <div style={overlayInner}>
-                <h2 style={{ fontSize: 36 }}>
-                  {message.includes("Survived") ? "🎉 Victory!" : "💣 Game Over"}
-                </h2>
-                <p>{message}</p>
-                <p>Score: <b>{score}</b></p>
-                <button
-                  style={btnStyle}
-                  onMouseEnter={e => Object.assign(e.target.style, btnHover)}
-                  onMouseLeave={e => Object.assign(e.target.style, btnStyle)}
-                  onClick={restart}
-                >
-                  {message.includes("Survived") ? "Play Again" : "Try Again"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+  // UI + Overlays
+  return (
+    <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden" }}>
+      {/* ✨ Floating Background Circles (move to background layer) */}
+      <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+        <div className="circle circle1" />
+        <div className="circle circle2" />
+        <div className="circle circle3" />
+        <div className="circle circle4" />
+        <div className="circle circle5" />
+        <div className="circle circle6" />
       </div>
 
-      {/* RIGHT PANEL (leaderboard placeholder + controls) */}
-      <div style={{ ...glassPanel, width: 240, position: "relative", minHeight: 200 }}>
-        <div
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            display: "flex",
-            gap: 10,
-            zIndex: 10,
-          }}
-        >
-          <button
-            onClick={() => setPaused(p => !p)}
-            title={paused ? "Resume" : "Pause"}
-            style={iconBtnStyle}
-            onMouseEnter={e => Object.assign(e.target.style, iconBtnHover)}
-            onMouseLeave={e => Object.assign(e.target.style, iconBtnStyle)}
-          >
-            {paused ? "▶️" : "⏸️"}
-          </button>
-
-          <button
-            onClick={() => setSoundOn(s => !s)}
-            title={soundOn ? "Mute" : "Unmute"}
-            style={iconBtnStyle}
-            onMouseEnter={e => Object.assign(e.target.style, iconBtnHover)}
-            onMouseLeave={e => Object.assign(e.target.style, iconBtnStyle)}
-          >
-            {soundOn ? "🔊" : "🔇"}
-          </button>
+      {/* Main Layout */}
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          padding: 24,
+          gap: 24,
+          zIndex: 1,
+        }}
+      >
+        {/* LEFT PANEL */}
+        <div style={{ ...glassPanel, width: 240 }}>
+          <h3 style={{ color: "#fff", marginBottom: 8 }}>⏱ Time Left</h3>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>{Math.max(0, timeLeft)}s</div>
+          <div>Score: <b>{score}</b></div>
+          <div>Best: {best}</div>
         </div>
 
-        {/* Future leaderboard placeholder */}
-        <div style={{ marginTop: 60, textAlign: "center", opacity: 0.6 }}>
-          <p>🏆 Leaderboard Coming Soon</p>
+        {/* 🎮 CENTER CANVAS AREA */}
+        <div
+          style={{
+            flex: 1,
+            position: "relative",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 2,
+          }}
+        >
+          {/* 🌫️ Glassy Canvas Container */}
+          <div
+            style={{
+              ...glassPanel,
+              width: `${GAME_WIDTH}px`,
+              height: `${GAME_HEIGHT}px`,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              borderRadius: 20,
+              boxShadow: "0 0 35px rgba(0,0,0,0.4)",
+              position: "relative",
+              overflow: "hidden",
+              backdropFilter: "blur(12px)",
+              background: "rgba(255, 255, 255, 0.03)",
+            }}
+          >
+            <canvas
+              ref={canvasRef}
+              style={{
+                borderRadius: 20,
+                background: "transparent",
+                width: "100%",
+                height: "100%",
+              }}
+            />
+
+            {/* Loading Overlay */}
+            {!assetsLoaded && (
+              <div style={overlayStyle}>
+                <div style={overlayInner}>
+                  <h2>Loading assets...</h2>
+                  <p>Please wait ⏳</p>
+                </div>
+              </div>
+            )}
+
+            {/* Start Overlay */}
+            {assetsLoaded && showStart && (
+              <div style={overlayStyle}>
+                <div style={overlayInner}>
+                  <h1 style={{ fontSize: 42, marginBottom: 12 }}>Facetally Catch!</h1>
+                  <p>Catch real logos, dodge bombs & rocks.</p>
+                  <button
+                    style={btnStyle}
+                    onMouseEnter={e => Object.assign(e.target.style, btnHover)}
+                    onMouseLeave={e => Object.assign(e.target.style, btnStyle)}
+                    onClick={startGame}
+                  >
+                    Start Game
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Game Over / Victory Overlay */}
+            {gameOver && (
+              <div style={overlayStyle}>
+                <div style={overlayInner}>
+                  <h2 style={{ fontSize: 36 }}>
+                    {message.includes("Survived") ? "🎉 Victory!" : "💣 Game Over"}
+                  </h2>
+                  <p>{message}</p>
+                  <p>Score: <b>{score}</b></p>
+                  <button
+                    style={btnStyle}
+                    onMouseEnter={e => Object.assign(e.target.style, btnHover)}
+                    onMouseLeave={e => Object.assign(e.target.style, btnStyle)}
+                    onClick={restart}
+                  >
+                    {message.includes("Survived") ? "Play Again" : "Try Again"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT PANEL (leaderboard placeholder + controls) */}
+        <div style={{ ...glassPanel, width: 240, position: "relative", minHeight: 200 }}>
+          <div
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              display: "flex",
+              gap: 10,
+              zIndex: 10,
+            }}
+          >
+            <button
+              onClick={() => setPaused(p => !p)}
+              title={paused ? "Resume" : "Pause"}
+              style={iconBtnStyle}
+              onMouseEnter={e => Object.assign(e.target.style, iconBtnHover)}
+              onMouseLeave={e => Object.assign(e.target.style, iconBtnStyle)}
+            >
+              {paused ? "▶️" : "⏸️"}
+            </button>
+
+            <button
+              onClick={() => setSoundOn(s => !s)}
+              title={soundOn ? "Mute" : "Unmute"}
+              style={iconBtnStyle}
+              onMouseEnter={e => Object.assign(e.target.style, iconBtnHover)}
+              onMouseLeave={e => Object.assign(e.target.style, iconBtnStyle)}
+            >
+              {soundOn ? "🔊" : "🔇"}
+            </button>
+          </div>
+
+          {/* Future leaderboard placeholder */}
+          <div style={{ marginTop: 60, textAlign: "center", opacity: 0.6 }}>
+            <p>🏆 Leaderboard Coming Soon</p>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 }

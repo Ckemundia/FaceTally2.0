@@ -6,10 +6,13 @@ from db import DB_PATH, get_student_by_id
 
 router = APIRouter()
 
+
 class MatchRequest(BaseModel):
     embedding: list[float]
 
+
 THRESHOLD = 0.6
+
 
 @router.post("/match")
 def match(request: MatchRequest):
@@ -17,7 +20,9 @@ def match(request: MatchRequest):
         # Convert incoming embedding to NumPy array
         embedding = np.array(request.embedding, dtype=np.float32)
         if embedding.shape != (128,):
-            raise HTTPException(status_code=400, detail="Invalid embedding shape. Must be 128 values.")
+            raise HTTPException(
+                status_code=400, detail="Invalid embedding shape. Must be 128 values."
+            )
 
         # Fetch all users
         conn = sqlite3.connect(DB_PATH)
@@ -37,7 +42,9 @@ def match(request: MatchRequest):
             try:
                 db_emb = np.array(json.loads(emb_json), dtype=np.float32)
                 if db_emb.shape != (128,):
-                    print(f"[DEBUG] Skipping student {student_id}: embedding shape {db_emb.shape}")
+                    print(
+                        f"[DEBUG] Skipping student {student_id}: embedding shape {db_emb.shape}"
+                    )
                     continue
             except Exception as e:
                 print(f"[DEBUG] Failed to parse embedding for {student_id}: {e}")
@@ -52,7 +59,7 @@ def match(request: MatchRequest):
         debug_info = {
             "best_match_candidate": best_match,
             "best_distance": float(best_dist),
-            "all_student_ids": [r[0] for r in rows]
+            "all_student_ids": [r[0] for r in rows],
         }
 
         # Check if best match is within threshold
@@ -72,16 +79,12 @@ def match(request: MatchRequest):
                 "matched": True,
                 "distance": float(best_dist),
                 "student": student,
-                "debug": debug_info
+                "debug": debug_info,
             }
 
         # No match found
         print("[MATCH DEBUG] No match found", debug_info)
-        return {
-            "matched": False,
-            "distance": float(best_dist),
-            "debug": debug_info
-        }
+        return {"matched": False, "distance": float(best_dist), "debug": debug_info}
 
     except Exception as e:
         traceback.print_exc()

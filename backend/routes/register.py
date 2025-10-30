@@ -5,24 +5,19 @@ from models import RegisterIn, RegisterOut
 
 router = APIRouter()
 
+
 @router.post("/register", response_model=RegisterOut)
 def register(payload: RegisterIn):
     emb = np.array(payload.embedding, dtype=np.float32)
 
     if emb.shape != (128,):
         raise HTTPException(
-            status_code=400,
-            detail="Invalid embedding shape. Must be 128 values."
+            status_code=400, detail="Invalid embedding shape. Must be 128 values."
         )
 
     try:
         # ✅ Save user
-        save_user(
-            payload.student_id,
-            payload.name,
-            emb.tolist(),
-            payload.wallet
-        )
+        save_user(payload.student_id, payload.name, emb.tolist(), payload.wallet)
 
         # ✅ Assign units if provided
         if payload.units and isinstance(payload.units, list):

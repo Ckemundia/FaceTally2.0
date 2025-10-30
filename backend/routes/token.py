@@ -4,6 +4,7 @@ from hedera_utils import create_pop_token
 
 router = APIRouter(prefix="/token", tags=["Token"])
 
+
 @router.post("/create")
 def create_token():
     """

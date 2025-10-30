@@ -6,6 +6,8 @@ export default function WebcamFace({ selectedUnit, onAttendanceMarked, disabled,
   const canvasRef = useRef(null);
   const [status, setStatus] = useState("Loading models...");
   const [recognizedStudent, setRecognizedStudent] = useState(null);
+  const processingRef = useRef(false);
+  const attendanceRef = useRef(false);
 
   useEffect(() => {
     let stream;
@@ -39,9 +41,9 @@ export default function WebcamFace({ selectedUnit, onAttendanceMarked, disabled,
     async function detectLoop() {
       if (!videoRef.current) return;
 
-      // 🔹 Skip detection if paused
+      // 🛑 Stop detection loop completely when paused
       if (pauseDetection) {
-        animationFrame = requestAnimationFrame(detectLoop);
+        cancelAnimationFrame(animationFrame);
         return;
       }
 
@@ -76,16 +78,35 @@ export default function WebcamFace({ selectedUnit, onAttendanceMarked, disabled,
         const embedding = Array.from(result.descriptor).map((v) => Number(v));
 
         // 🔹 Only check if we haven't recognized a student yet
-        if (embedding.length === 128 && !recognizedStudent) {
+        if (embedding.length === 128 && !processingRef.current && !recognizedStudent) {
+          processingRef.current = true; // lock processing
           setStatus("📡 Checking face against database...");
           await doFaceCheck(embedding);
         }
+
       }
 
       animationFrame = requestAnimationFrame(detectLoop);
     }
 
     async function doFaceCheck(embedding) {
+      // Helper to get current location
+      async function getCurrentLocation() {
+        return new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject("Geolocation not supported by this browser");
+          } else {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => resolve({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+              }),
+              (err) => reject(err.message || "Location access denied")
+            );
+          }
+        });
+      }
+
       try {
         const res = await fetch("/api/match", {
           method: "POST",
@@ -105,9 +126,79 @@ export default function WebcamFace({ selectedUnit, onAttendanceMarked, disabled,
           setRecognizedStudent(student);
           setStatus(`✅ Match found: ${student.name} (${student.student_id})`);
 
-          if (onAttendanceMarked) {
-            onAttendanceMarked({ student, attendanceRecorded: false });
+          if (attendanceRef.current) {
+            console.log("⚠️ Attendance already marked, skipping duplicate.");
+            return;
           }
+          attendanceRef.current = true;
+
+          // 🧠 Stop detection + webcam right after successful match
+          if (videoRef.current?.srcObject) {
+            videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+          }
+          cancelAnimationFrame(animationFrame);
+
+          // 🟢 If a unit is selected, mark attendance immediately
+          if (selectedUnit) {
+            try {
+              setStatus("📍 Getting location...");
+              const { lat, lng } = await getCurrentLocation();
+
+              setStatus("📝 Marking attendance...");
+              const res2 = await fetch("/api/attendance", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  student_id: student.student_id,
+                  unit: selectedUnit,
+                  lat,
+                  lng,
+                }),
+              });
+
+              const data2 = await res2.json();
+              console.log("[DEBUG] Attendance API response:", data2);
+
+              if (data2.ok) {
+                setStatus(`✅ Attendance recorded for ${selectedUnit}`);
+
+                // 🛑 Stop webcam detection right away
+                if (videoRef.current?.srcObject) {
+                  videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+                }
+                cancelAnimationFrame(animationFrame);
+
+                // 🎁 Automatically send reward
+                const rewardRes = await fetch("/api/reward/give", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    student_wallet: student.wallet,
+                    amount: 1,
+                  }),
+                });
+
+                const rewardData = await rewardRes.json();
+                console.log("[DEBUG] Reward API response:", rewardData);
+
+                //  Notify Dashboard to show popup modal
+                if (onAttendanceMarked) {
+                  onAttendanceMarked({
+                    student,
+                    attendanceRecorded: true,
+                    rewardInfo: rewardData,
+                  });
+                }
+              } else {
+                setStatus(`⚠️ ${data2.detail || "Attendance failed"}`);
+              }
+            } catch (err) {
+              console.error("❌ Attendance marking failed:", err);
+              setStatus("⚠️ Attendance request failed");
+            }
+
+          }
+
         } else if (data.matched && !data.student) {
           setStatus("⚠️ Match found, but student details missing");
           console.warn("Student details missing! Debug info:", data.debug);
@@ -118,7 +209,12 @@ export default function WebcamFace({ selectedUnit, onAttendanceMarked, disabled,
         console.error("❌ Match request failed:", err);
         setStatus("⚠️ Match error: " + (err.message || err));
       }
+      finally {
+
+        processingRef.current = false;
+      }
     }
+
 
     loadModelsAndStart();
 
@@ -129,6 +225,14 @@ export default function WebcamFace({ selectedUnit, onAttendanceMarked, disabled,
       cancelAnimationFrame(animationFrame);
     };
   }, [selectedUnit, disabled, onAttendanceMarked, pauseDetection]);
+
+  // ✅ Resume detection automatically when unpaused
+  useEffect(() => {
+    if (!pauseDetection && videoRef.current && videoRef.current.srcObject) {
+      requestAnimationFrame(() => detectLoop());
+    }
+  }, [pauseDetection]);
+
 
   return (
     <div style={{ position: "relative" }}>

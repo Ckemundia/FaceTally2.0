@@ -4,6 +4,7 @@ from db import get_units, get_student_units
 
 router = APIRouter()
 
+
 @router.get("/units")
 def list_units():
     """
@@ -16,7 +17,7 @@ def list_units():
         raise HTTPException(status_code=500, detail=f"Could not fetch units: {str(e)}")
 
 
-@router.get("/units/myunits/{student_id}")
+@router.get("/myunits/{student_id}")
 def list_my_units(student_id: str):
     """
     ✅ Return only the units assigned to a specific student,
@@ -27,8 +28,7 @@ def list_my_units(student_id: str):
 
         if not units:
             raise HTTPException(
-                status_code=404,
-                detail=f"No units found for student {student_id}"
+                status_code=404, detail=f"No units found for student {student_id}"
             )
 
         return {"units": units}
@@ -36,6 +36,5 @@ def list_my_units(student_id: str):
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Could not fetch student units: {str(e)}"
+            status_code=500, detail=f"Could not fetch student units: {str(e)}"
         )
