@@ -91,37 +91,39 @@ Audit-friendly: Provides historical ledger data, enabling traceable and verifiab
 🧩 Estimated Setup Time: ~8 minutes total
 (Backend: 4 min | Frontend: 3 min | Env setup: 1 min)
 
-1️⃣ Clone the Repository
-git clone https://github.com/<your-username>/facetally.git
-cd facetally
-2️⃣ Environment Setup
+**1️⃣ Clone the Repository**
+git clone https://github.com/Ckemundia/FaceTally2.0.git
+cd Attendify
+**2️⃣ Environment Setup**
 
-Create a .env file inside the backend directory using this template:
-HEDERA_ACCOUNT_ID=0.0.xxxxxx
-HEDERA_PRIVATE_KEY=302e0201...
-TOKEN_ID=0.0.6879369
-MIRROR_NODE_URL=https://testnet.mirrornode.hedera.com/api/v1
+**Create a .env file inside the backend directory using this template:**
+
+        HEDERA_ACCOUNT_ID=0.0.xxxxxx
+        HEDERA_PRIVATE_KEY=302e0201...
+        TOKEN_ID=0.0.6879369
+        MIRROR_NODE_URL=https://testnet.mirrornode.hedera.com/api/v1
 
 ⚠️ Never commit your .env file.
-3️⃣ Install Dependencies
-Backend (FastAPI)
-cd backend
-pip install -r requirements.txt
-uvicorn main: app 
+**3️⃣ Install Dependencies**
 
-Frontend (Vite + React)
-cd frontend
-npm install
-npm run dev
+    Backend (FastAPI)
+    cd backend
+    pip install -r requirements.txt
+    uvicorn main: app 
 
-🧠Running Environment
-Component	Command	Local URL
-Frontend (Vite)	npm run dev	http://localhost:5173
-Backend (FastAPI + Uvicorn)	uvicorn main:app --reload	http://127.0.0.1:8000
-  Requirements:
-    Node.js 18+
-    Python 3.10+
-    Browser: Chrome / Edge (latest)
+    Frontend (Vite + React)
+    cd frontend
+    npm install
+    npm run dev
+
+**🧠Running Environment**
+    Component	Command	Local URL
+    Frontend (Vite)	npm run dev	http://localhost:5173
+    Backend (FastAPI + Uvicorn)	uvicorn main:app --reload	http://127.0.0.1:8000
+      Requirements:
+        Node.js 18+
+        Python 3.10+
+        Browser: Chrome / Edge (latest)
 
 ### 🧱 Architecture Diagram
 
@@ -169,6 +171,24 @@ Backend (FastAPI + Uvicorn)	uvicorn main:app --reload	http://127.0.0.1:8000
   Frontend: ESLint (React)
   Backend: Black (Python)
   Modular folder structure with clear logic separation:
+
+🔐 Privacy & Ethical Considerations
+FaceTally is designed with **data privacy and ethical AI use** as a top priority.
+
+- 🧠 **No Raw Photos Stored:** The system never saves or transmits raw facial images.  
+  Instead, we use **facial embeddings** — numerical representations of facial features — that cannot reconstruct the original image.
+
+- 🔒 **Local Processing First:** All face recognition runs locally in the browser whenever possible, ensuring user control over their own data.
+
+- 🌍 **Encrypted Communication:** Any data that must be sent to the backend is transmitted over HTTPS and stored only temporarily for verification.
+
+- 🪙 **Consent-Based Verification:** Attendance capture only begins after the user explicitly grants camera access. No background recording occurs.
+
+- 🧾 **Transparent Data Use:** Embeddings are used strictly for attendance verification and are deleted or refreshed periodically.
+
+- 🧩 **Ethical Design Philosophy:** FaceTally promotes fairness and accessibility — no demographic bias training data is stored or shared, and models are open for audit.
+
+Together, these safeguards ensure that **FaceTally respects privacy while delivering verifiable, decentralized attendance tracking.**
 
 🎮 Screenshots / Demo (Coming Soon)
 Feature                          	Description
