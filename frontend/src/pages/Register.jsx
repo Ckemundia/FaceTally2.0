@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import * as faceapi from "face-api.js";
 import { useNavigate } from "react-router-dom";
 import WalletInput from "../components/WalletInput";
+console.log("Backend Base URL:", import.meta.env.VITE_API_BASE_URL);
 
 export default function Register() {
   const videoRef = useRef(null);
