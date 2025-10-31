@@ -196,7 +196,13 @@ FaceTally is designed with **data privacy and ethical AI use** as a top priority
 
 Together, these safeguards ensure that **FaceTally respects privacy while delivering verifiable, decentralized attendance tracking.**
 
-🎮 Screenshots and Demo (Coming Soon)
+🎮 Screenshots and Demo 
+<img width="1339" height="828" alt="image" src="https://github.com/user-attachments/assets/25318f66-7e95-4d5f-ad15-9fb049d595a0" />
+
+<img width="1368" height="860" alt="image" src="https://github.com/user-attachments/assets/f66ecfa5-8146-4ee5-90da-b7255f78d52f" />
+
+<img width="1287" height="842" alt="image" src="https://github.com/user-attachments/assets/68c1ea55-c8f8-4591-9ffc-9c435062dfb7" />
+
 Feature                          	Description
 🎥 Face Recognition	               Real-time detection via webcam using face-api.js
 🧾 Attendance                      Logging	Securely recorded to Hedera via HCS
