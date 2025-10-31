@@ -22,6 +22,8 @@ export default function Dashboard() {
   const [ready, setReady] = useState(false);
   const navigate = useNavigate();
 
+  console.log("✅ API Base URL:", import.meta.env.VITE_API_BASE_URL);
+
 
   useEffect(() => {
     if (studentLocation && units.length > 0) {

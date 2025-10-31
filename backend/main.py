@@ -14,6 +14,8 @@ app = FastAPI(title="FRAS Backend")
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://facetally.vercel.app",
+    "https://www.facetally.vercel.app",
 ]
 
 app.add_middleware(
