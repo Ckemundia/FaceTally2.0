@@ -20,7 +20,7 @@ export default function Register() {
 
   // Fetch units from backend
   useEffect(() => {
-    fetch(`/api/units`)
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/units`)
       .then((res) => res.json())
       .then((data) => {
         setUnits(data.units || []);
@@ -153,7 +153,7 @@ export default function Register() {
       console.log("Payload to backend:", payload);
 
       setStatus("📡 Sending data to backend...");
-      const res = await fetch(`/api/register`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -72,7 +72,7 @@ export default function TutorDashboard() {
       const newActive = {};
 
       for (const u of allUnits) {
-        const res = await fetch(`/api/unit/status/${u.code}`);
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/unit/status/${u.code}`);
         if (!res.ok) continue;
         const data = await res.json();
 
@@ -118,11 +118,11 @@ export default function TutorDashboard() {
       try {
         const [attRes, statRes, usersRes, statusRes, unitsRes] =
           await Promise.allSettled([
-            fetch("/api/attendance/history"),
-            fetch("/api/tutor/stats"),
-            fetch("/api/users"),
-            fetch("/api/tutor/units/status"),
-            fetch("/api/units"),
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/api/attendance/history`),
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/api/tutor/stats`),
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`),
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/api/tutor/units/status`),
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/api/units`),
           ]);
 
         if (attRes.status === "fulfilled" && attRes.value.ok) {
@@ -213,7 +213,7 @@ export default function TutorDashboard() {
     const newValue = !unitEnabled[u];
     setUnitEnabled((prev) => ({ ...prev, [u]: newValue }));
     try {
-      await fetch(`/api/tutor/units/${u}/toggle?enabled=${newValue}`, {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/tutor/units/${u}/toggle?enabled=${newValue}`, {
         method: "POST",
       });
     } catch {
@@ -415,7 +415,7 @@ export default function TutorDashboard() {
       };
 
       try {
-        const res = await fetch(`/api/unit/status`, {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/unit/status`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -468,7 +468,7 @@ export default function TutorDashboard() {
           location_radius: null,
         };
 
-        const res = await fetch(`/api/unit/status`, {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/unit/status`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
