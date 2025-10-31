@@ -13,6 +13,7 @@ app = FastAPI(title="FRAS Backend")
 # Allow only frontend origins
 origins = [
     "http://localhost:5173",
+    "https://face-tally2-0.vercel.app",
     "http://127.0.0.1:5173",
     "https://facetally.vercel.app",
     "https://www.facetally.vercel.app",

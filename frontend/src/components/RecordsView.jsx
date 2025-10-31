@@ -16,7 +16,7 @@ function RecordsView({ selectedUnit, allUnits }) {
             return;
         }
         setLoadingDates(true);
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/attendance/dates?unit=${encodeURIComponent(u)}`)
+        fetch(`/api/attendance/dates?unit=${encodeURIComponent(u)}`)
             .then((res) => res.json())
             .then((data) => setDates(data.dates || []))
             .catch((err) => {
@@ -32,7 +32,7 @@ function RecordsView({ selectedUnit, allUnits }) {
         if (!u || !date) return;
         setSelectedDateLocal(date);
         setLoadingRecords(true);
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/attendance/by_date?unit=${encodeURIComponent(u)}&date=${encodeURIComponent(date)}`)
+        fetch(`/api/attendance/by_date?unit=${encodeURIComponent(u)}&date=${encodeURIComponent(date)}`)
             .then((res) => res.json())
             .then((data) => setRecords(data.records || []))
             .catch((err) => {
@@ -46,7 +46,7 @@ function RecordsView({ selectedUnit, allUnits }) {
     const downloadCSV = (date) => {
         const u = selectedUnit || unit;
         if (!u || !date) return;
-        const url = `${import.meta.env.VITE_API_BASE_URL}/api/attendance/export_csv?unit=${encodeURIComponent(u)}&date=${encodeURIComponent(date)}`;
+        const url = `/api/attendance/export_csv?unit=${encodeURIComponent(u)}&date=${encodeURIComponent(date)}`;
         window.open(url, "_blank");
     };
 

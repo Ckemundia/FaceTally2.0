@@ -21,7 +21,7 @@ export default function WalletInput({ walletAddress, setWalletAddress }) {
     setStatus("⏳ Verifying wallet on Hedera...");
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/validate_wallet?wallet=${trimmed}`);
+      const res = await fetch(`/api/validate_wallet?wallet=${trimmed}`);
       const data = await res.json();
 
       if (data.valid) {

@@ -22,8 +22,6 @@ export default function Dashboard() {
   const [ready, setReady] = useState(false);
   const navigate = useNavigate();
 
-  console.log("✅ API Base URL:", import.meta.env.VITE_API_BASE_URL);
-
 
   useEffect(() => {
     if (studentLocation && units.length > 0) {
@@ -61,8 +59,8 @@ export default function Dashboard() {
   const fetchHistory = async (studentId = null) => {
     try {
       const url = studentId
-        ? `${import.meta.env.VITE_API_BASE_URL}/api/attendance/history?student_id=${studentId}`
-        : `${import.meta.env.VITE_API_BASE_URL}/api/attendance/history`;
+        ? `/api/attendance/history?student_id=${studentId}`
+        : `/api/attendance/history`;
       const res = await fetch(url);
       const data = await res.json();
       setRecords(data.records ?? []);
@@ -83,7 +81,7 @@ export default function Dashboard() {
   const fetchUnits = async (student_id) => {
     if (!student_id) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/myunits/${student_id}`);
+      const res = await fetch(`/api/myunits/${student_id}`);
       const data = await res.json();
       let unitsData = data.units ?? [];
 
@@ -112,7 +110,7 @@ export default function Dashboard() {
 
   const fetchUnitStatus = async (unit_code) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/unit/status/${unit_code}`);
+      const res = await fetch(`/api/unit/status/${unit_code}`);
       const data = await res.json();
       return data; // { is_active, end_time, location_radius, etc. }
     } catch (err) {
@@ -162,29 +160,6 @@ export default function Dashboard() {
     }
   }, [activeTab]);
 
-
-  const handleAttendanceMarked = ({ student, attendanceRecorded, rewardInfo }) => {
-    if (student && !attendanceRecorded) {
-      setCurrentStudent(student);
-      setFaceMatched(true);
-      setActiveTab("units");
-    } else if (attendanceRecorded) {
-      setLatestRecord({ student, unit: selectedUnit });
-      fetchHistory();
-
-      // 🟢 Show modal feedback
-      if (rewardInfo) {
-        setModalMessage(
-          `✅ Attendance marked and reward sent!\nTXID: ${rewardInfo.tx_id || "N/A"}`
-        );
-      } else {
-        setModalMessage(`✅ Attendance marked successfully.`);
-      }
-      setModalVisible(true);
-    }
-  };
-
-
   const canClaimReward = latestRecord
     ? records.some(
       (r) =>
@@ -198,7 +173,7 @@ export default function Dashboard() {
     if (!latestRecord?.student?.wallet) return alert("⚠️ Wallet not found");
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/reward/give`, {
+      const res = await fetch(`/api/reward/give`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -224,11 +199,57 @@ export default function Dashboard() {
   const selectedUnitObj = safeUnits.find((u) => u.unit_code === selectedUnit);
   const unitDisabled = !selectedUnitObj || !selectedUnitObj.is_active;
 
-  const handleUnitClick = (unit) => {
-    setSelectedUnit(unit.unit_code);  // Set which unit we’re marking
-    setFaceMatched(false);            // Resume webcam detection
-    setActiveTab("live");             // Go back to webcam tab
+  const handleUnitClick = async (unit) => {
+    if (!currentStudent) {
+      alert("Please scan your face first!");
+      return;
+    }
+
+    try {
+      const getLocation = () =>
+        new Promise((resolve, reject) => {
+          if (!navigator.geolocation) reject("No geolocation support");
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            (err) => reject(err.message || "Location error")
+          );
+        });
+
+      const { lat, lng } = await getLocation();
+
+      // 🟢 Mark attendance
+      const res = await fetch(`/api/attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: currentStudent.student_id,
+          unit: unit.unit_code,
+          lat,
+          lng,
+        }),
+      });
+
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.detail || "Attendance failed");
+
+      // 🎁 Reward immediately
+      const rewardRes = await fetch(`/api/reward/give`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_wallet: currentStudent.wallet,
+          amount: 1,
+        }),
+      });
+
+      const rewardData = await rewardRes.json();
+      alert(`✅ Attendance recorded for ${unit.unit_name}. Reward TX: ${rewardData.tx_id || "N/A"}`);
+      fetchHistory(currentStudent.student_id);
+    } catch (err) {
+      alert("⚠️ " + err.message);
+    }
   };
+
 
   return (
     <div
@@ -441,11 +462,13 @@ export default function Dashboard() {
           <section>
             <h2>📷 Live Camera</h2>
             <WebcamFace
-              selectedUnit={selectedUnit || null}
-              onAttendanceMarked={handleAttendanceMarked}
-              disabled={!selectedUnit || unitDisabled}
-              pauseDetection={faceMatched} // 👈 stop detection after match
+              onFaceMatched={(student) => {
+                setCurrentStudent(student);
+                setActiveTab("units"); // show units after successful recognition
+              }}
+              pauseDetection={false}
             />
+
           </section>
         )}
 
