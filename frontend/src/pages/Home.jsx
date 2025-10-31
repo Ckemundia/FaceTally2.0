@@ -10,95 +10,95 @@ export default function Home() {
   const heading = "WELCOME TO FACE TALLY";
 
   useEffect(() => {
-  let i = 0;
-  let forward = true;
-  let interval;
+    let i = 0;
+    let forward = true;
+    let interval;
 
-  const typeEffect = () => {
-    interval = setInterval(() => {
-      if (forward) {
-        setHeadingText(heading.slice(0, i + 1));
-        i++;
+    const typeEffect = () => {
+      interval = setInterval(() => {
+        if (forward) {
+          setHeadingText(heading.slice(0, i + 1));
+          i++;
 
-        if (i === heading.length) {
-          clearInterval(interval);
-          setShowContent(true);
+          if (i === heading.length) {
+            clearInterval(interval);
+            setShowContent(true);
 
-          // Hold for 60 seconds before fading and erasing
-          setTimeout(() => {
-            const headingEl = document.querySelector("h1");
-            if (headingEl) {
-              headingEl.style.transition = "opacity 1s ease";
-              headingEl.style.opacity = "0"; // Fade out
-            }
-
-            // Wait for fade to complete before erasing
+            // Hold for 60 seconds before fading and erasing
             setTimeout(() => {
-              if (headingEl) headingEl.style.opacity = "1"; // Reset opacity
-              forward = false;
-              typeEffect(); // Restart interval for erase
-            }, 1000); // 1s fade duration
-          }, 60000);
+              const headingEl = document.querySelector("h1");
+              if (headingEl) {
+                headingEl.style.transition = "opacity 1s ease";
+                headingEl.style.opacity = "0"; // Fade out
+              }
+
+              // Wait for fade to complete before erasing
+              setTimeout(() => {
+                if (headingEl) headingEl.style.opacity = "1"; // Reset opacity
+                forward = false;
+                typeEffect(); // Restart interval for erase
+              }, 1000); // 1s fade duration
+            }, 60000);
+          }
+        } else {
+          setHeadingText(heading.slice(0, i - 1));
+          i--;
+
+          if (i === 0) {
+            clearInterval(interval);
+            forward = true;
+            setShowContent(false);
+
+            // small pause before retyping again
+            setTimeout(() => {
+              typeEffect();
+            }, 1000);
+          }
         }
-      } else {
-        setHeadingText(heading.slice(0, i - 1));
-        i--;
+      }, 120);
+    };
 
-        if (i === 0) {
-          clearInterval(interval);
-          forward = true;
-          setShowContent(false);
+    typeEffect();
 
-          // small pause before retyping again
-          setTimeout(() => {
-            typeEffect();
-          }, 1000);
-        }
-      }
-    }, 120);
-  };
-
-  typeEffect();
-
-  return () => clearInterval(interval);
-}, []);
+    return () => clearInterval(interval);
+  }, []);
 
 
   return (
     <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden" }}>
       {/* Floating Circles */}
-      {[...Array(6)].map((_, i) => <div key={i} className={`circle circle${i+1}`}></div>)}
+      {[...Array(6)].map((_, i) => <div key={i} className={`circle circle${i + 1}`}></div>)}
 
       {/* Navbar */}
-          <nav style={navBar}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <img
-                src="/logo.png"
-                alt="Facetally Logo"
-                className="logo-glow"
-                style={{
-                  width: "100px",
-                  height: "100px",
-                  objectFit: "contain",
-                  filter: "drop-shadow(0 0 5px #3b82f6)",
-                  transition: "transform 0.3s ease, filter 0.3s ease",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "scale(1.1)";
-                  e.currentTarget.style.filter = "drop-shadow(0 0 15px #60a5fa)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.filter = "drop-shadow(0 0 5px #3b82f6)";
-                }}
-              />
-              <h2 style={{ margin: 0, color: "#fff", fontWeight: 800 }}></h2>
-            </div>
-            <a href="/register" style={navLink}>Register</a>
+      <nav style={navBar}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <img
+            src="/logo.png"
+            alt="Facetally Logo"
+            className="logo-glow"
+            style={{
+              width: "120px",
+              height: "120px",
+              objectFit: "contain",
+              filter: "drop-shadow(0 0 5px #3b82f6)",
+              transition: "transform 0.3s ease, filter 0.3s ease",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.1)";
+              e.currentTarget.style.filter = "drop-shadow(0 0 15px #60a5fa)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.filter = "drop-shadow(0 0 5px #3b82f6)";
+            }}
+          />
+          <h2 style={{ margin: 0, color: "#fff", fontWeight: 800 }}></h2>
+        </div>
+        <a href="/register" style={navLink}>Register</a>
 
-            {/* Logo animation style */}
-            <style>{`
+        {/* Logo animation style */}
+        <style>{`
               @keyframes softGlow {
                 0% { filter: drop-shadow(0 0 5px #3b82f6); }
                 50% { filter: drop-shadow(0 0 15px #60a5fa); }
@@ -109,11 +109,19 @@ export default function Home() {
                 animation: softGlow 2.5s infinite ease-in-out;
               }
             `}</style>
-          </nav>
+      </nav>
 
 
       {/* Main content */}
-      <div style={{ textAlign: "center", marginTop: "120px", position: "relative", zIndex: 5 }}>
+      <div
+        style={{
+          textAlign: "center",
+          paddingTop: "15vh", // 15% of viewport height
+          position: "relative",
+          zIndex: 5,
+        }}
+      >
+
         <h1 style={headingStyle}>
           {headingText}
           <span style={cursorStyle}>|</span>
@@ -140,39 +148,56 @@ export default function Home() {
       {showLoginModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
-            <h2>Enter Wallet Address</h2>
-            <input
-              type="text"
-              placeholder="0.0.xxxxx"
-              value={wallet}
-              onChange={(e) => setWallet(e.target.value)}
-              style={inputStyle}
-            />
-            <div style={{ marginTop: "20px" }}>
-              <button onClick={handleLogin} style={btnStyle}>Continue</button>
-              <button
-                onClick={() => setShowLoginModal(false)}
-                style={{ ...btnStyle, background: "#6b7280", marginLeft: "10px" }}
-              >
-                Close
-              </button>
-            </div>
+            <h2>Login</h2>
+            <p
+              style={{
+                fontSize: "0.95rem",
+                marginBottom: "20px",
+                color: "#9ca3af",
+                lineHeight: 1.6,
+              }}
+            >
+              <b>🚫NOTE before proceeding❗❗</b><br />
+              Students functions require a valid <b>Hedera Testnet wallet</b> for attendance and
+              reward tracking. <br />
+              Tutors can continue in <b>Demo Mode</b> without wallet connection.
+            </p>
+
+            <button
+              style={btnStyle}
+              onClick={() => (window.location.href = "/tutor")}
+            >
+              Continue
+            </button>
+
+            <button
+              onClick={() => setShowLoginModal(false)}
+              style={{ ...btnStyle, background: "#6b7280", marginLeft: "10px" }}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
+
 
       {/* Getting Started Modal */}
       {showGuideModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
-            <h2>How to Use Attendify</h2>
+            <h2>How to Use FaceTally</h2>
             <ul style={{ textAlign: "left", marginTop: "15px", lineHeight: "1.8" }}>
-              <li>Register your face once through the registration page.</li>
-              <li>During class, face the camera to mark attendance.</li>
-              <li>Tutors can view attendance per unit on their dashboard.</li>
-              <li>Tutors can export attendance records for any date.</li>
-              <li>Reward tokens are sent to your wallet based on attendance.</li>
+
+              <li>Register your face once through the registrationpage no images are stored, only secure facial embeddings.</li>
+              <li>During class,face the camera to mark attendance automatically and instantly.</li>
+              <li>Tutors can view and manage attendance per unit from their dashboard.</li>
+              <li>Tutors can export attendance records for any date or class in just one click.</li>
+              <li>Students earn reward tokens based on consistent attendance performance.</li>
+              <li>POP$ tokens can be redeemed or used for leaderboard rankings (coming soon!).</li>
+              <li>FaceTally uses privacy-preserving AI  ethical, transparent, and consent-based.</li>
+              <li>Gamified learning mode (FacetallyCatch) helps improve engagement and retention.</li>
             </ul>
+
             <button
               onClick={() => setShowGuideModal(false)}
               style={{ ...btnStyle, marginTop: "20px" }}
@@ -196,17 +221,18 @@ export default function Home() {
 
 // --- Styles ---
 const navBar = {
-  position: "fixed",
-  top: 0,
-  left: 0,
+  position: "absolute",
+  top: "15px",
+  left: "0",
   width: "100%",
-  padding: "15px 40px",
+  padding: "10px 40px",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  background: "rgba(15, 23, 36, 0.9)",
+  background: "transparent",
   zIndex: 10,
 };
+
 
 const navLink = {
   color: "#93c5fd",

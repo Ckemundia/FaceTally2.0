@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Canvas Dimensions 
 const GAME_WIDTH = 900;
@@ -39,6 +40,8 @@ export default function FacetallyCatchGame() {
   const [gameOver, setGameOver] = useState(false);
   const [showStart, setShowStart] = useState(true);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
+
 
   const stateRef = useRef({
     objects: [],
@@ -56,6 +59,19 @@ export default function FacetallyCatchGame() {
 
   const imagesRef = useRef({});
   const soundsRef = useRef({});
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem("facetally_instructions_seen");
+      if (!seen) {
+        setShowInstructions(true);
+
+      }
+    } catch (err) {
+      console.warn("LocalStorage unavailable:", err);
+      setShowInstructions(true);
+    }
+  }, []);
 
   //LOAD IMAGES + SOUNDS (safe version with loading overlay)
   useEffect(() => {
@@ -225,7 +241,7 @@ export default function FacetallyCatchGame() {
       });
     }
 
-    // 🌋 Final 15s = bomb storm
+    // Final 15s = bomb storm
     if (timeLeft <= 15) {
       for (let i = 0; i < 3; i++) {
         const bx = Math.random() * (width - 90) + 10;
@@ -312,7 +328,7 @@ export default function FacetallyCatchGame() {
 
   const collide = (a, bx, by, bw, bh) => !(a.x + a.w < bx || a.x > bx + bw || a.y + a.h < by || a.y > by + bh);
 
-  // ✅ Main loop with pre-check for loaded assets
+  // Main loop with pre-check for loaded assets
   useEffect(() => {
     if (!running) return;
     const ctx = canvasRef.current.getContext("2d");
@@ -575,7 +591,40 @@ export default function FacetallyCatchGame() {
           <div style={{ fontSize: 32, marginBottom: 12 }}>{Math.max(0, timeLeft)}s</div>
           <div>Score: <b>{score}</b></div>
           <div>Best: {best}</div>
+
+          {/* Divider line for visual separation */}
+          <div
+            style={{
+              height: 1,
+              background: "rgba(255,255,255,0.15)",
+              margin: "16px 0",
+            }}
+          />
+
+          {/*  Coming Soon Section */}
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: "#d1d5db" }}>
+            <p style={{ marginBottom: 6 }}>
+              💰 <strong>POP$ Token Rewards</strong> — coming soon when we go live!
+            </p>
+            <p style={{ marginBottom: 6 }}>
+              🔒 Game will unlock after a <strong>7-day perfect attendance streak</strong>.
+            </p>
+            <p style={{ opacity: 0.8 }}>
+              For now, enjoy the demo version — more updates coming soon!
+            </p>
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              opacity: 0.6,
+              marginTop: 20,
+              textAlign: "center",
+            }}
+          >
+            © {new Date().getFullYear()} Facetally
+          </div>
         </div>
+
 
         {/* 🎮 CENTER CANVAS AREA */}
         <div
@@ -588,7 +637,7 @@ export default function FacetallyCatchGame() {
             zIndex: 2,
           }}
         >
-          {/* 🌫️ Glassy Canvas Container */}
+          {/* Glassy Canvas Container */}
           <div
             style={{
               ...glassPanel,
@@ -614,6 +663,75 @@ export default function FacetallyCatchGame() {
                 height: "100%",
               }}
             />
+            {/* 🧾 Instructions Popup */}
+            <AnimatePresence>
+              {showInstructions && (
+                <motion.div
+                  key="instructions"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    background: "rgba(0,0,0,0.75)",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    zIndex: 9999,
+                    backdropFilter: "blur(6px)",
+                  }}
+                >
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                    style={{
+                      background: "#1e293b",
+                      color: "#e2e8f0",
+                      padding: "28px",
+                      borderRadius: "12px",
+                      width: "90%",
+                      maxWidth: "420px",
+                      boxShadow: "0 0 25px rgba(34,211,238,0.4)",
+                      textAlign: "center",
+                    }}
+                  >
+                    <h2 style={{ color: "#38bdf8", marginBottom: "12px" }}>
+                      🕹️ How to Play FaceTally Catch
+                    </h2>
+                    <p style={{ marginBottom: "20px", lineHeight: "1.5" }}>
+                      Catch real <b>FaceTally logos</b> to score points.<br />
+                      Avoid bombs and rocks — they end your run!<br />
+                      Catch happy clocks for bonus time.<br />
+                      ⏱Survive 60 seconds to win!<br />
+                      *Use arrow keys to move left and right<br />
+                      *Press spacebar to pause the game
+                      All the best champ!!🦾
+                    </p>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowInstructions(false)}
+                      style={{
+                        background: "#38bdf8",
+                        color: "#0f172a",
+                        border: "none",
+                        padding: "10px 18px",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Got it!
+                    </motion.button>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
 
             {/* Loading Overlay */}
             {!assetsLoaded && (
@@ -696,6 +814,15 @@ export default function FacetallyCatchGame() {
               onMouseLeave={e => Object.assign(e.target.style, iconBtnStyle)}
             >
               {soundOn ? "🔊" : "🔇"}
+            </button>
+            <button
+              onClick={() => setShowInstructions(true)}
+              title="Show Instructions"
+              style={iconBtnStyle}
+              onMouseEnter={e => Object.assign(e.target.style, iconBtnHover)}
+              onMouseLeave={e => Object.assign(e.target.style, iconBtnStyle)}
+            >
+              ❔
             </button>
           </div>
 

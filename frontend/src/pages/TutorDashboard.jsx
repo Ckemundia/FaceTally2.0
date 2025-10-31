@@ -9,7 +9,7 @@ import {
   FiClock,
   FiBook
 } from "react-icons/fi";
-
+import RecordsView from "../components/RecordsView";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Dialog } from "../components/ui/dialog";
@@ -478,7 +478,7 @@ export default function TutorDashboard() {
 
         // Success – remove the spinner
         setSavingMap((prev) => ({ ...prev, [unitCode]: false }));
-        await loadLimits(); // ✅ refresh limits from backend
+        await loadLimits(); // refresh limits from backend
 
       } catch (err) {
         console.error("❌ Failed to cancel limits:", err);
@@ -824,7 +824,7 @@ export default function TutorDashboard() {
               }}
             >
               <img
-                src="/src/profile.jpeg"
+                src="/profile.jpeg"
                 alt="Profile"
                 style={{
                   width: 60,
@@ -888,7 +888,7 @@ export default function TutorDashboard() {
                 { id: "limits", icon: <FiClock />, label: "Limits" },
                 { id: "students", icon: <FiUsers />, label: "Students" },
                 { id: "attendance", icon: <FiCalendar />, label: "Attendance" },
-                { id: "rewards", icon: <FiGift />, label: "Rewards" },
+                { id: "records", icon: <FiDownload />, label: "Records" },
               ].map(({ id, icon, label }) => (
                 <button
                   key={id}
@@ -954,7 +954,9 @@ export default function TutorDashboard() {
         {activeTab === "limits" && <LimitsView />}
         {activeTab === "students" && <StudentsView />}
         {activeTab === "attendance" && <AttendanceView />}
-
+        {activeTab === "records" && (
+          <RecordsView selectedUnit={selectedUnit} allUnits={allUnits} />
+        )}
       </main>
     </div>
   );

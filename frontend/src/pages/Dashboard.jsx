@@ -3,6 +3,7 @@ import WebcamFace from "../components/WebcamFace";
 import HCSMessages from "../components/HCSMessages";
 import "../style.css";
 import SmallMap from "../components/SmallMap";
+import { useNavigate } from "react-router-dom";
 
 
 export default function Dashboard() {
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const [modalMessage, setModalMessage] = useState("");
   const [studentLocation, setStudentLocation] = useState(null);
   const [ready, setReady] = useState(false);
+  const navigate = useNavigate();
 
 
   useEffect(() => {
@@ -277,7 +279,7 @@ export default function Dashboard() {
               }}
             >
               <img
-                src="/src/logo.png"
+                src="/logo.png"
                 alt="Logo"
                 style={{
                   height: 100,
@@ -286,6 +288,7 @@ export default function Dashboard() {
                   transition: "all 0.3s ease",
                 }}
               />
+
               {sidebarOpen && (
                 <span
                   style={{
@@ -314,7 +317,7 @@ export default function Dashboard() {
               }}
             >
               <img
-                src="/src/profile.jpeg"
+                src="/profile.jpeg"
                 alt="Profile"
                 style={{
                   width: 60,
@@ -374,10 +377,18 @@ export default function Dashboard() {
                 { id: "history", icon: "📜", label: "Attendance History" },
                 { id: "ledger", icon: "🌐", label: "HCS Ledger" },
                 { id: "rewards", icon: "🎁", label: "Rewards" },
+                { id: "game", icon: "🎮", label: "Play Game" },
               ].map(({ id, icon, label }) => (
                 <button
                   key={id}
-                  onClick={() => setActiveTab(id)}
+                  onClick={() => {
+                    if (id === "game") {
+                      navigate("/game"); // go to the FaceTallyGame page
+                    } else {
+                      setActiveTab(id);
+                    }
+                  }}
+
                   className={`flex items-center gap-3 p-3 rounded-lg w-full text-left transition-all duration-300 ${activeTab === id ? "text-cyan-400" : "text-slate-200"
                     }`}
                   style={{

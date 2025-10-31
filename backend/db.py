@@ -557,3 +557,20 @@ def get_all_unit_statuses():
         )
         rows = [dict(row) for row in cur.fetchall()]
     return rows
+
+
+def get_attendance_dates(unit_code: str):
+    """Return distinct dates (YYYY-MM-DD) for a given unit, newest first."""
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT DISTINCT DATE(timestamp) as d
+            FROM attendance
+            WHERE unit = ?
+            ORDER BY DATE(timestamp) DESC
+            """,
+            (unit_code,),
+        )
+        rows = cur.fetchall()
+    return [r[0] for r in rows if r[0] is not None]

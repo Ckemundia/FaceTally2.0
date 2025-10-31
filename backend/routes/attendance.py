@@ -9,9 +9,11 @@ from db import (
     get_unit_status,
     update_attendance_txid,
     get_student_wallet,
+    get_attendance_dates,
 )
 from hedera_utils import reward_student, publish_message
-
+from fastapi.responses import StreamingResponse
+import io, csv
 
 router = APIRouter()
 
@@ -189,3 +191,57 @@ def attendance_history(
         return {"records": records[:limit]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"History fetch failed: {str(e)}")
+
+
+@router.get("/attendance/dates")
+def attendance_dates(unit: str = Query(..., description="Unit code, e.g. CS101")):
+    try:
+        dates = get_attendance_dates(unit)
+        return {"unit": unit, "dates": dates}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch dates: {e}")
+
+
+@router.get("/attendance/by_date")
+def attendance_by_date(unit: str = Query(...), date: str = Query(...)):
+    """
+    Return all attendance records for given unit and date (YYYY-MM-DD).
+    """
+    try:
+        # reuse existing list_attendance which returns dicts with timestamp
+        records = list_attendance(limit=10000)
+        filtered = [
+            r
+            for r in records
+            if r.get("unit") == unit and (r.get("timestamp") or "").startswith(date)
+        ]
+        return {"unit": unit, "date": date, "records": filtered}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch records: {e}")
+
+
+@router.get("/attendance/export_csv")
+def attendance_export_csv(unit: str = Query(...), date: str = Query(...)):
+    try:
+        records = export_attendance(unit, date)  # your db.py function
+        if not records:
+            raise HTTPException(
+                status_code=404, detail="No attendance found for that date/unit"
+            )
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Student ID", "Name", "Timestamp", "Unit"])
+        for r in records:
+            writer.writerow([r["student_id"], r["name"], r["timestamp"], r["unit"]])
+        output.seek(0)
+        filename = f"attendance_{unit}_{date}.csv"
+        return StreamingResponse(
+            output,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"CSV export failed: {e}")
