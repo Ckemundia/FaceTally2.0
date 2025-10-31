@@ -219,5 +219,5 @@ This project is licensed under the [MIT License](./LICENSE).
 ## 🏆 Hackathon Resources / Demo
 - **Live Demo:** [Try FaceTally on Testnet](https://your-demo-link.com)
 - **Pitch Deck:** [view pitchdeck](https://link-to-pitchdeck.com)
-- **Hedera Certification:** [View Certificate](/certificate.pdf)
+- **Hedera Certification:** [View Certificate](./frontend/public/certificate.pdf)
 
