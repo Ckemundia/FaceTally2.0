@@ -1,7 +1,13 @@
 # FaceTally — AI-Powered Attendance & Token Rewards System  
 ### 🏁 Track: Distributed Ledger Technology (DLT) for Operations  
 
----
+ **DLT Impact on Operations**
+ Immutable, tamper-proof attendance records
+    
+Trustable proof-of-presence for audits
+    
+ Real-time transparency for tutors and institutions
+    ---
 
 ## 🌍 Overview  
 
@@ -190,7 +196,7 @@ FaceTally is designed with **data privacy and ethical AI use** as a top priority
 
 Together, these safeguards ensure that **FaceTally respects privacy while delivering verifiable, decentralized attendance tracking.**
 
-🎮 Screenshots / Demo (Coming Soon)
+🎮 Screenshots and Demo (Coming Soon)
 Feature                          	Description
 🎥 Face Recognition	               Real-time detection via webcam using face-api.js
 🧾 Attendance                      Logging	Securely recorded to Hedera via HCS
@@ -213,5 +219,5 @@ This project is licensed under the [MIT License](./LICENSE).
 ## 🏆 Hackathon Resources / Demo
 - **Live Demo:** [Try FaceTally on Testnet](https://your-demo-link.com)
 - **Pitch Deck:** [view pitchdeck](https://link-to-pitchdeck.com)
-- **Hedera Certification:** [View Certificate](https://link-to-certificate.com)
+- **Hedera Certification:** [View Certificate](/certificate.pdf)
 
