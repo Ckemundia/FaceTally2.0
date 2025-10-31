@@ -59,8 +59,8 @@ export default function Dashboard() {
   const fetchHistory = async (studentId = null) => {
     try {
       const url = studentId
-        ? `/api/attendance/history?student_id=${studentId}`
-        : `/api/attendance/history`;
+        ? `${import.meta.env.VITE_API_BASE_URL}/api/attendance/history?student_id=${studentId}`
+        : `${import.meta.env.VITE_API_BASE_URL}/api/attendance/history`;
       const res = await fetch(url);
       const data = await res.json();
       setRecords(data.records ?? []);
@@ -81,7 +81,7 @@ export default function Dashboard() {
   const fetchUnits = async (student_id) => {
     if (!student_id) return;
     try {
-      const res = await fetch(`/api/myunits/${student_id}`);
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/myunits/${student_id}`);
       const data = await res.json();
       let unitsData = data.units ?? [];
 
@@ -110,7 +110,7 @@ export default function Dashboard() {
 
   const fetchUnitStatus = async (unit_code) => {
     try {
-      const res = await fetch(`/api/unit/status/${unit_code}`);
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/unit/status/${unit_code}`);
       const data = await res.json();
       return data; // { is_active, end_time, location_radius, etc. }
     } catch (err) {
@@ -196,7 +196,7 @@ export default function Dashboard() {
     if (!latestRecord?.student?.wallet) return alert("⚠️ Wallet not found");
 
     try {
-      const res = await fetch("/api/reward/give", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/reward/give`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

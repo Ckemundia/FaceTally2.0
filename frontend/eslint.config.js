@@ -5,7 +5,7 @@ import json from "@eslint/json";
 import markdown from "@eslint/markdown";
 import css from "@eslint/css";
 import { defineConfig } from "eslint/config";
-
+import prettier from "eslint-plugin-prettier";
 export default defineConfig([
   // Base JS/JSX configuration
   {
@@ -16,9 +16,13 @@ export default defineConfig([
         ...globals.node,
       },
     },
-    plugins: {
-      react: pluginReact,
+
+    plugins: { prettier },
+    extends: ["plugin:prettier/recommended"],
+    rules: {
+      "prettier/prettier": ["warn", { endOfLine: "auto" }],
     },
+
     extends: [
       js.configs.recommended,
       pluginReact.configs.flat.recommended,
@@ -29,9 +33,9 @@ export default defineConfig([
       },
     },
     rules: {
-      "no-unused-vars": "warn",           
-      "react/prop-types": "off",          
-      "no-undef": "error",                
+      "no-unused-vars": "warn",
+      "react/prop-types": "off",
+      "no-undef": "error",
     },
   },
 
@@ -84,10 +88,10 @@ export default defineConfig([
   },
 
   {
-  plugins: { prettier: require("eslint-plugin-prettier") },
-  extends: ["plugin:prettier/recommended"],
-  rules: {
-    "prettier/prettier": ["warn", { endOfLine: "auto" }],
-  },
-}
+    plugins: { prettier: require("eslint-plugin-prettier") },
+    extends: ["plugin:prettier/recommended"],
+    rules: {
+      "prettier/prettier": ["warn", { endOfLine: "auto" }],
+    },
+  }
 ]);

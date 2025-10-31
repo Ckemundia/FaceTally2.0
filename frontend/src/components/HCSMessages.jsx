@@ -6,7 +6,7 @@ export default function HCSMessages() {
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch("/api/hcs/messages?limit=10");
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/hcs/messages?limit=10`);
       if (!res.ok) throw new Error("Failed to fetch HCS messages");
       const data = await res.json();
       setMessages(data.messages || []);

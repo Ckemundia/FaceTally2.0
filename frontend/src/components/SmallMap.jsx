@@ -23,7 +23,7 @@ export default function SmallMap({ unitLocation, radius = 100, studentLocation }
     useEffect(() => {
         if (!unitLocation?.lat || !unitLocation?.lng || !mapContainerRef.current) return;
 
-        // 🧹 Fix: clear any previous map instance (prevents needing double save)
+        // Fix: clear any previous map instance (prevents needing double save)
         if (mapContainerRef.current._leaflet_id) {
             try {
                 mapContainerRef.current._leaflet_id = null;

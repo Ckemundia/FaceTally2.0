@@ -108,12 +108,13 @@ export default function WebcamFace({ selectedUnit, onAttendanceMarked, disabled,
       }
 
       try {
-        const res = await fetch("/api/match", {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/match`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ embedding }),
         });
         const data = await res.json();
+
 
         console.log("[DEBUG] Match API response:", data);
 
@@ -145,7 +146,7 @@ export default function WebcamFace({ selectedUnit, onAttendanceMarked, disabled,
               const { lat, lng } = await getCurrentLocation();
 
               setStatus("📝 Marking attendance...");
-              const res2 = await fetch("/api/attendance", {
+              const res2 = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/attendance`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -169,7 +170,7 @@ export default function WebcamFace({ selectedUnit, onAttendanceMarked, disabled,
                 cancelAnimationFrame(animationFrame);
 
                 // 🎁 Automatically send reward
-                const rewardRes = await fetch("/api/reward/give", {
+                const rewardRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/reward/give`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
